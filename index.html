@@ -4,9 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Albano Insurance Solutions | Contractor Risk Intelligence</title>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
 <style>
 body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#071a2f;color:#fff;}
 .header{background:#0b2a45;padding:18px 24px;border-bottom:1px solid #1f3b5c;}
@@ -46,6 +44,9 @@ input,select{width:100%;padding:10px;border-radius:6px;border:none;margin:6px 0;
     <option>HVAC</option>
   </select>
 
+  <label>Estimated Annual Revenue ($)</label>
+  <input id="revenue" placeholder="e.g. 500000">
+
   <label><input type="checkbox" id="consent"> Consent</label>
 
   <button class="btn" onclick="submitLead()">Generate Report</button>
@@ -55,64 +56,148 @@ input,select{width:100%;padding:10px;border-radius:6px;border:none;margin:6px 0;
   <h2>Risk Inputs</h2>
   <input id="height" placeholder="Height Exposure">
   <input id="hotwork" placeholder="Hot Work">
-  <input id="claims" placeholder="Claims">
+  <input id="claims" placeholder="Number of Claims (past 3-5 yrs)">
+  <input id="claimvalue" placeholder="Total Value of Claims ($)">
   <input id="subexpo" placeholder="Sub Exposure">
   <button class="btn" onclick="runRisk()">Analyze</button>
 </div>
 
 <div id="report" class="hidden card">
   <h2>Executive Report Ready</h2>
-  <button class="btn" onclick="generatePDF()">Download Aon-Style PDF</button>
+  <button class="btn" onclick="generatePDF()">Download 2-Page Benchmark Report</button>
 </div>
 
 </div>
 
 <script>
-let lead={}, reportData={};
-
+let lead={}, reportData={}, submissionData={}, brokerStrategy={};
 const MAKE_WEBHOOK_URL="https://hook.us2.make.com/r3k8n4tsh0lfn6fypy6welptxdkhigtq";
-
-function $(id){return document.getElementById(id);}
-
-function view(id){
-  document.querySelectorAll('.card').forEach(c=>c.classList.add('hidden'));
-  $(id).classList.remove('hidden');
-}
-
-function postWebhook(data){
-  fetch(MAKE_WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
-}
+function $(id){return document.getElementById(id);} 
+function view(id){document.querySelectorAll('.card').forEach(c=>c.classList.add('hidden'));$(id).classList.remove('hidden');}
+function postWebhook(data){fetch(MAKE_WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).catch(()=>{});} 
 
 function submitLead(){
   if(!$("consent").checked){alert("Consent required");return;}
-
   lead={
     business:$("business").value,
     contact:$("contact").value,
     email:$("email").value,
-    trade:$("trade").value
+    trade:$("trade").value,
+    revenue:parseFloat((""+$("revenue").value).replace(/,/g,''))||0
   };
-
   postWebhook({event:"lead_created",lead});
   view("dash");
+}
+
+const CA_RATES={ Electrician:9.5, Plumber:8.2, HVAC:7.8 };
+
+const WC_CLASS_CODES={
+  Electrician:[{code:"5190", rate:5.25}],
+  Plumber:[{code:"5183", rate:4.75}],
+  HVAC:[{code:"5537", rate:4.10}]
+};
+
+const INSURANCE_CARRIERS=[
+  {name:"UFG Insurance",url:"https://www.ufginsurance.com/"},
+  {name:"AmTrust Financial",url:"https://amtrustfinancial.com/industries"},
+  {name:"Nationwide",url:"https://www.nationwide.com/"},
+  {name:"Liberty Mutual Business",url:"https://business.libertymutual.com/commercial-solutions/"}
+];
+
+function carrierFitEngine(score,factors){
+  let carriers=[];
+
+  if(factors.lossProfile==="Severe Loss Profile"){
+    return [{name:"E&S Market",fit:"Required"}];
+  }
+
+  if(score<35){
+    carriers.push({name:"Travelers",fit:"Preferred"},{name:"Nationwide",fit:"Preferred"});
+  } else if(score<60){
+    carriers.push({name:"Hartford",fit:"Standard"},{name:"Guard",fit:"Standard"});
+  } else {
+    carriers.push({name:"E&S Market",fit:"Non-Preferred"});
+  }
+
+  if(factors.claims>2 || factors.claimValue>250000){
+    carriers=carriers.filter(c=>c.fit!=="Preferred");
+  }
+  if(factors.height>10){
+    carriers=carriers.filter(c=>c.name!=="Travelers");
+  }
+  if(factors.claimValue>100000){
+    carriers=carriers.filter(c=>c.name!=="Nationwide");
+  }
+
+  return carriers;
 }
 
 function runRisk(){
   let h=+$("height").value||0;
   let hw=+$("hotwork").value||0;
   let c=+$("claims").value||0;
+  let cv=parseFloat((""+$("claimvalue").value).replace(/,/g,''))||0;
   let s=+$("subexpo").value||0;
 
-  let score=(h*2)+(hw*3)+(c*10)+(s*1.5);
+  let claimSeverityFactor=cv>0?Math.min(cv/10000,20):0;
+  let score=(h*2)+(hw*3)+(c*8)+(claimSeverityFactor*5)+(s*1.5);
 
-  reportData={
-    score:score,
-    tier:score>60?"Non-Preferred":score>30?"Standard":"Preferred",
-    premiumImpact:Math.round(score*120)
+  let lossProfile="Clean Loss Profile";
+  if(score>=60||c>2||cv>100000){lossProfile="Severe Loss Profile";}
+  else if(score>=30||c>=2||cv>25000){lossProfile="Moderate Loss Profile";}
+
+  let rate=CA_RATES[lead.trade]||8;
+  let benchmarkPremium=(lead.revenue/1000)*rate;
+
+  let payroll=lead.revenue*0.3;
+  let wcRate=WC_CLASS_CODES[lead.trade]?.[0]?.rate||4;
+  let wcPremium=(payroll/100)*wcRate;
+
+  let riskLoad=score*120;
+  let estimatedPremium=benchmarkPremium+riskLoad+wcPremium;
+
+  // SUBMISSION READINESS ENGINE
+  let submissionScore=100;
+  if(lossProfile==="Severe Loss Profile") submissionScore-=40;
+  if(c>2) submissionScore-=20;
+  if(cv>100000) submissionScore-=15;
+  if(h>10) submissionScore-=10;
+  if(hw>5) submissionScore-=10;
+
+  submissionScore=Math.max(0,submissionScore);
+
+  let submissionTier="Standard Market Ready";
+  if(submissionScore<40) submissionTier="E&S Required";
+  else if(submissionScore<70) submissionTier="Conditional Market";
+
+  // BROKER STRATEGY LAYER
+  brokerStrategy={
+    action: submissionTier,
+    guidance:
+      submissionTier==="E&S Required"?
+      "Clean up loss narrative, reduce subcontractor exposure, prepare surplus lines submission" :
+      submissionTier==="Conditional Market"?
+      "Pre-underwriting review required. Strengthen risk presentation before standard market submission" :
+      "Proceed to standard market submission with preferred carriers"
   };
 
-  postWebhook({event:"risk_scored",lead,reportData});
+  let carriers=carrierFitEngine(score,{height:h,hotwork:hw,claims:c,claimValue:cv,sub:s,lossProfile});
 
+  reportData={
+    score,
+    tier:score>60?"Non-Preferred":score>30?"Standard":"Preferred",
+    lossProfile,
+    submissionScore,
+    submissionTier,
+    benchmarkPremium:Math.round(benchmarkPremium),
+    estimatedPremium:Math.round(estimatedPremium),
+    premiumImpact:Math.round(estimatedPremium-benchmarkPremium),
+    wcPremium:Math.round(wcPremium),
+    carriers,
+    factors:{height:h,hotwork:hw,claims:c,claimValue:cv,sub:s}
+  };
+
+  postWebhook({event:"risk_scored",lead,reportData,brokerStrategy});
   view("report");
 }
 
@@ -120,126 +205,39 @@ function generatePDF(){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  // ===== PAGE 1: COVER =====
   doc.setFillColor(11,42,69);
-  doc.rect(0,0,210,297,'F');
+  doc.rect(0,0,210,40,'F');
   doc.setTextColor(200,155,60);
-  doc.setFontSize(22);
-  doc.text("Albano Insurance Solutions",20,60);
-  doc.setTextColor(255,255,255);
-  doc.setFontSize(14);
-  doc.text("Contractor Risk & Brokerage Intelligence Report",20,75);
-  doc.setFontSize(11);
-  doc.text("Prepared For:",20,110);
-  doc.text(lead.business,20,118);
-  doc.text("Trade: "+lead.trade,20,126);
+  doc.text("Albano Insurance Solutions",10,20);
 
-  // ===== PAGE 2: EXEC SUMMARY =====
-  doc.addPage();
   doc.setTextColor(0,0,0);
-  doc.setFontSize(16);
-  doc.text("Executive Summary",10,20);
-  doc.setFontSize(11);
-  doc.text("Leakage Score: "+reportData.score,10,35);
-  doc.text("Risk Tier: "+reportData.tier,10,42);
-  doc.text("Premium Leakage: $"+reportData.premiumImpact,10,49);
+  doc.text("California Benchmark & Risk Strategy",10,55);
+  doc.text("Business: "+lead.business,10,65);
+  doc.text("Trade: "+lead.trade,10,72);
 
-  // Bar chart
-  doc.setFillColor(200,155,60);
-  doc.rect(10,60,Math.min(reportData.score,180),8,'F');
-  doc.setFontSize(9);
-  doc.text("Risk Score",10,58);
+  doc.text("Estimated Premium: $"+reportData.estimatedPremium,10,90);
+  doc.text("Benchmark Premium: $"+reportData.benchmarkPremium,10,98);
+  doc.text("WC Estimated: $"+reportData.wcPremium,10,106);
 
-  // ===== PAGE 3: BENCHMARK =====
+  doc.text("Submission Readiness: "+reportData.submissionScore+" ("+reportData.submissionTier+")",10,120);
+
   doc.addPage();
-  let avg = 42;
-  let diff = reportData.score - avg;
+  doc.text("Broker Strategy",10,20);
+  doc.text(brokerStrategy.action,10,35);
+  doc.text(brokerStrategy.guidance,10,50);
 
-  doc.setFontSize(16);
-  doc.text("California Benchmark Comparison",10,20);
-
-  doc.setFontSize(11);
-  doc.text("Your Score: "+reportData.score,10,40);
-  doc.text("CA Avg: "+avg,10,48);
-  doc.text("Variance: "+diff,10,56);
-
-  // visual bars
-  doc.setFillColor(200,155,60);
-  doc.rect(10,70,reportData.score,8,'F');
-  doc.setFillColor(100,100,100);
-  doc.rect(10,85,avg,8,'F');
-
-  doc.setFontSize(9);
-  doc.text("Your Risk",10,68);
-  doc.text("CA Average",10,83);
-
-  // ===== PAGE 4: RISK RADAR =====
-  doc.addPage();
-  doc.setFontSize(16);
-  doc.text("Risk Profile Breakdown",10,20);
-
-  let factors=[
-    {name:"Height",val:Math.min(lead.height||0,10)},
-    {name:"Hot Work",val:Math.min(lead.hotwork||0,10)},
-    {name:"Claims",val:Math.min(lead.claims||0,10)},
-    {name:"Sub Risk",val:Math.min(lead.subexpo||0,10)}
-  ];
-
-  let y=40;
-  factors.forEach(f=>{
-    doc.setFontSize(10);
-    doc.text(f.name,10,y);
-    doc.setFillColor(200,155,60);
-    doc.rect(40,y-5,f.val*10,6,'F');
-    y+=15;
+  let y=70;
+  doc.text("Carrier Fit:",10,y);
+  y+=10;
+  reportData.carriers.forEach(c=>{
+    doc.text(c.name+" - "+c.fit,10,y);
+    y+=8;
   });
 
-  // ===== PAGE 5: CARRIER TABLE =====
-  doc.addPage();
-  doc.setFontSize(16);
-  doc.text("Carrier Positioning",10,20);
+  doc.text("Loss Profile: "+reportData.lossProfile,10,y+10);
 
-  const carriers=[
-    {name:"Travelers",fit:"Preferred",note:"Best fit if risk reduced"},
-    {name:"Hartford",fit:"Standard",note:"Possible with adjustments"},
-    {name:"Guard",fit:"Standard",note:"Mid-tier option"},
-    {name:"E&S Market",fit:"Non-Preferred",note:"Current likely placement"}
-  ];
-
-  let y2=40;
-  carriers.forEach(c=>{
-    doc.setFontSize(10);
-    doc.text(c.name+" - "+c.fit,10,y2);
-    doc.text(c.note,80,y2);
-    y2+=12;
-  });
-
-  // ===== PAGE 6: RECOMMENDATIONS =====
-  doc.addPage();
-  doc.setFontSize(16);
-  doc.text("Broker Recommendations",10,20);
-
-  doc.setFontSize(10);
-  doc.text("- Remove restrictive GL endorsements",10,40);
-  doc.text("- Optimize Workers Comp classification",10,50);
-  doc.text("- Reposition Auto policy",10,60);
-  doc.text("- Strengthen subcontractor controls",10,70);
-
-  // ===== FINAL CTA =====
-  doc.addPage();
-  doc.setFillColor(11,42,69);
-  doc.rect(0,0,210,297,'F');
-  doc.setTextColor(200,155,60);
-  doc.setFontSize(18);
-  doc.text("Next Steps",20,60);
-  doc.setTextColor(255,255,255);
-  doc.setFontSize(11);
-  doc.text("You are a candidate for insurance restructuring.",20,80);
-  doc.text("Albano Insurance Solutions can reduce premium leakage and improve carrier access.",20,95,{maxWidth:170});
-
-  doc.save("Albano_Advanced_Report.pdf");
-
-  postWebhook({event:"pdf_generated",lead,reportData});
+  doc.save("Albano_Submission_Strategy_Report.pdf");
+  postWebhook({event:"pdf_generated",lead,reportData,brokerStrategy});
 }
 </script>
 
