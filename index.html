@@ -3,120 +3,84 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>California Contractor Insurance Intelligence | Albano Insurance Solutions</title>
+<title>Albano Insurance Solutions | Contractor Risk Intelligence</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#071a2f;color:#fff;}
-.header{background:#0b2a45;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1f3b5c;}
+.header{background:#0b2a45;padding:18px 24px;border-bottom:1px solid #1f3b5c;}
 .brand{font-size:18px;font-weight:bold;}
 .gold{color:#c89b3c;}
-.container{max-width:1100px;margin:auto;padding:24px;}
+.container{max-width:1000px;margin:auto;padding:24px;}
 .card{background:#0f2f4d;padding:18px;border-radius:10px;margin-bottom:16px;border:1px solid #1f3b5c;}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-input,select,textarea{width:100%;padding:10px;border-radius:6px;border:none;margin-top:6px;margin-bottom:10px;}
+input,select{width:100%;padding:10px;border-radius:6px;border:none;margin:6px 0;}
 .btn{background:#c89b3c;color:#000;font-weight:bold;border:none;padding:12px;width:100%;border-radius:6px;cursor:pointer;}
-.btn:hover{background:#e0b94f;}
-.small{font-size:12px;opacity:0.8;}
 .hidden{display:none;}
-.report{background:#fff;color:#000;padding:20px;border-radius:10px;}
-.badge{display:inline-block;background:#c89b3c;color:#000;padding:4px 8px;border-radius:6px;font-size:12px;}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="brand"><span class="gold">Albano Insurance Solutions</span> | California Risk Intelligence Desk</div>
+  <div class="brand"><span class="gold">Albano Insurance Solutions</span> | Risk Intelligence Desk</div>
 </div>
 
 <div class="container">
 
 <div id="lead" class="card">
-  <span class="badge">FREE CALIFORNIA INSURANCE BENCHMARK</span>
-  <h2>Contractor Risk & Brokerage Intelligence Report</h2>
+  <h2>Contractor Risk Report</h2>
 
   <label>Business Name</label>
   <input id="business">
 
-  <label>Contact Name</label>
+  <label>Contact</label>
   <input id="contact">
 
   <label>Email</label>
   <input id="email">
 
-  <label>Phone</label>
-  <input id="phone">
-
   <label>Trade</label>
-  <select id="trade" onchange="loadPain()">
+  <select id="trade">
     <option>Electrician</option>
     <option>Plumber</option>
     <option>HVAC</option>
-    <option>General Contractor</option>
-    <option>Painter</option>
-    <option>Roofing</option>
   </select>
 
-  <div id="pain" class="small"></div>
+  <label><input type="checkbox" id="consent"> Consent</label>
 
-  <label><input type="checkbox" id="consent"> I agree to receive my Albano Insurance Solutions report</label>
-
-  <button class="btn" onclick="submitLead()">Generate Broker Report</button>
+  <button class="btn" onclick="submitLead()">Generate Report</button>
 </div>
 
 <div id="dash" class="hidden card">
-  <h2>Leakage Score v2 Engine</h2>
-
-  <label>Height Exposure</label>
-  <input id="height" type="number">
-
-  <label>Hot Work</label>
-  <input id="hotwork" type="number">
-
-  <label>Claims</label>
-  <input id="claims" type="number">
-
-  <label>Subcontractor Exposure</label>
-  <input id="subexpo" type="number">
-
-  <button class="btn" onclick="runRisk()">Run Analysis</button>
-
-  <div id="output"></div>
+  <h2>Risk Inputs</h2>
+  <input id="height" placeholder="Height Exposure">
+  <input id="hotwork" placeholder="Hot Work">
+  <input id="claims" placeholder="Claims">
+  <input id="subexpo" placeholder="Sub Exposure">
+  <button class="btn" onclick="runRisk()">Analyze</button>
 </div>
 
 <div id="report" class="hidden card">
-  <h2>Broker Intelligence Report</h2>
-  <div id="reportBox"></div>
-  <button class="btn" onclick="triggerRenewalEngine()">Activate Renewal Engine</button>
+  <h2>Executive Report Ready</h2>
+  <button class="btn" onclick="generatePDF()">Download Aon-Style PDF</button>
 </div>
 
 </div>
 
 <script>
-let lead = {};
-let reportData = {};
+let lead={}, reportData={};
 
-const MAKE_WEBHOOK_URL = "https://hook.us2.make.com/r3k8n4tsh0lfn6fypy6welptxdkhigtq";
-const RENEWAL_WEBHOOK_URL = "https://hook.us2.make.com/renewal-engine";
+const MAKE_WEBHOOK_URL="https://hook.us2.make.com/r3k8n4tsh0lfn6fypy6welptxdkhigtq";
 
-function $(id){ return document.getElementById(id); }
+function $(id){return document.getElementById(id);}
 
 function view(id){
-  var cards = document.querySelectorAll(".card");
-  for(var i=0;i<cards.length;i++){cards[i].classList.add("hidden");}
-  $(id).classList.remove("hidden");
+  document.querySelectorAll('.card').forEach(c=>c.classList.add('hidden'));
+  $(id).classList.remove('hidden');
 }
 
-function postWebhook(url,data){
-  fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)})
-  .catch(function(e){console.log("Webhook error",e);});
-}
-
-function loadPain(){
-  var map={Electrician:"Live circuit + wildfire risk",Plumber:"Water damage risk",HVAC:"Roof exposure", "General Contractor":"Sub risk",Painter:"Ladder risk",Roofing:"Fall risk"};
-  $("pain").innerText=map[$("trade").value];
+function postWebhook(data){
+  fetch(MAKE_WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
 }
 
 function submitLead(){
@@ -126,49 +90,157 @@ function submitLead(){
     business:$("business").value,
     contact:$("contact").value,
     email:$("email").value,
-    phone:$("phone").value,
     trade:$("trade").value
   };
 
-  postWebhook(MAKE_WEBHOOK_URL,{event:"lead_created",lead:lead});
+  postWebhook({event:"lead_created",lead});
   view("dash");
 }
 
 function runRisk(){
-  var h=+$("height").value||0;
-  var c=+$("claims").value||0;
-  var s=+$("subexpo").value||0;
-  var h2=+$("hotwork").value||0;
+  let h=+$("height").value||0;
+  let hw=+$("hotwork").value||0;
+  let c=+$("claims").value||0;
+  let s=+$("subexpo").value||0;
 
-  var score=(h*2)+(h2*3)+(c*10)+(s*1.5);
+  let score=(h*2)+(hw*3)+(c*10)+(s*1.5);
 
-  reportData={score:score,tier:score>60?"High":score>30?"Medium":"Low"};
+  reportData={
+    score:score,
+    tier:score>60?"Non-Preferred":score>30?"Standard":"Preferred",
+    premiumImpact:Math.round(score*120)
+  };
 
-  $("output").innerHTML="Score: "+score+" Tier: "+reportData.tier;
-
-  generateReport();
-}
-
-function generateReport(){
-  var html="<p><b>Business:</b> "+lead.business+"</p>"+
-           "<p><b>Trade:</b> "+lead.trade+"</p>"+
-           "<p><b>Score:</b> "+reportData.score+"</p>"+
-           "<p><b>Tier:</b> "+reportData.tier+"</p>";
-
-  $("reportBox").innerHTML=html;
-
-  postWebhook(MAKE_WEBHOOK_URL,{event:"report_generated",lead:lead,reportData:reportData});
+  postWebhook({event:"risk_scored",lead,reportData});
 
   view("report");
 }
 
-function triggerRenewalEngine(){
-  var alerts=[90,60,30].map(function(d){return{days:d,lead:lead.business};});
-  postWebhook(RENEWAL_WEBHOOK_URL,{lead:lead,reportData:reportData,alerts:alerts});
-  alert("Renewal Engine Triggered");
-}
+function generatePDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
 
-console.log("Production Brokerage OS Live");
+  // ===== PAGE 1: COVER =====
+  doc.setFillColor(11,42,69);
+  doc.rect(0,0,210,297,'F');
+  doc.setTextColor(200,155,60);
+  doc.setFontSize(22);
+  doc.text("Albano Insurance Solutions",20,60);
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(14);
+  doc.text("Contractor Risk & Brokerage Intelligence Report",20,75);
+  doc.setFontSize(11);
+  doc.text("Prepared For:",20,110);
+  doc.text(lead.business,20,118);
+  doc.text("Trade: "+lead.trade,20,126);
+
+  // ===== PAGE 2: EXEC SUMMARY =====
+  doc.addPage();
+  doc.setTextColor(0,0,0);
+  doc.setFontSize(16);
+  doc.text("Executive Summary",10,20);
+  doc.setFontSize(11);
+  doc.text("Leakage Score: "+reportData.score,10,35);
+  doc.text("Risk Tier: "+reportData.tier,10,42);
+  doc.text("Premium Leakage: $"+reportData.premiumImpact,10,49);
+
+  // Bar chart
+  doc.setFillColor(200,155,60);
+  doc.rect(10,60,Math.min(reportData.score,180),8,'F');
+  doc.setFontSize(9);
+  doc.text("Risk Score",10,58);
+
+  // ===== PAGE 3: BENCHMARK =====
+  doc.addPage();
+  let avg = 42;
+  let diff = reportData.score - avg;
+
+  doc.setFontSize(16);
+  doc.text("California Benchmark Comparison",10,20);
+
+  doc.setFontSize(11);
+  doc.text("Your Score: "+reportData.score,10,40);
+  doc.text("CA Avg: "+avg,10,48);
+  doc.text("Variance: "+diff,10,56);
+
+  // visual bars
+  doc.setFillColor(200,155,60);
+  doc.rect(10,70,reportData.score,8,'F');
+  doc.setFillColor(100,100,100);
+  doc.rect(10,85,avg,8,'F');
+
+  doc.setFontSize(9);
+  doc.text("Your Risk",10,68);
+  doc.text("CA Average",10,83);
+
+  // ===== PAGE 4: RISK RADAR =====
+  doc.addPage();
+  doc.setFontSize(16);
+  doc.text("Risk Profile Breakdown",10,20);
+
+  let factors=[
+    {name:"Height",val:Math.min(lead.height||0,10)},
+    {name:"Hot Work",val:Math.min(lead.hotwork||0,10)},
+    {name:"Claims",val:Math.min(lead.claims||0,10)},
+    {name:"Sub Risk",val:Math.min(lead.subexpo||0,10)}
+  ];
+
+  let y=40;
+  factors.forEach(f=>{
+    doc.setFontSize(10);
+    doc.text(f.name,10,y);
+    doc.setFillColor(200,155,60);
+    doc.rect(40,y-5,f.val*10,6,'F');
+    y+=15;
+  });
+
+  // ===== PAGE 5: CARRIER TABLE =====
+  doc.addPage();
+  doc.setFontSize(16);
+  doc.text("Carrier Positioning",10,20);
+
+  const carriers=[
+    {name:"Travelers",fit:"Preferred",note:"Best fit if risk reduced"},
+    {name:"Hartford",fit:"Standard",note:"Possible with adjustments"},
+    {name:"Guard",fit:"Standard",note:"Mid-tier option"},
+    {name:"E&S Market",fit:"Non-Preferred",note:"Current likely placement"}
+  ];
+
+  let y2=40;
+  carriers.forEach(c=>{
+    doc.setFontSize(10);
+    doc.text(c.name+" - "+c.fit,10,y2);
+    doc.text(c.note,80,y2);
+    y2+=12;
+  });
+
+  // ===== PAGE 6: RECOMMENDATIONS =====
+  doc.addPage();
+  doc.setFontSize(16);
+  doc.text("Broker Recommendations",10,20);
+
+  doc.setFontSize(10);
+  doc.text("- Remove restrictive GL endorsements",10,40);
+  doc.text("- Optimize Workers Comp classification",10,50);
+  doc.text("- Reposition Auto policy",10,60);
+  doc.text("- Strengthen subcontractor controls",10,70);
+
+  // ===== FINAL CTA =====
+  doc.addPage();
+  doc.setFillColor(11,42,69);
+  doc.rect(0,0,210,297,'F');
+  doc.setTextColor(200,155,60);
+  doc.setFontSize(18);
+  doc.text("Next Steps",20,60);
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(11);
+  doc.text("You are a candidate for insurance restructuring.",20,80);
+  doc.text("Albano Insurance Solutions can reduce premium leakage and improve carrier access.",20,95,{maxWidth:170});
+
+  doc.save("Albano_Advanced_Report.pdf");
+
+  postWebhook({event:"pdf_generated",lead,reportData});
+}
 </script>
 
 </body>
