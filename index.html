@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>California Contractor Insurance Intelligence | Albano Insurance Solutions</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#071a2f;color:#fff;}
+.header{background:#0b2a45;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1f3b5c;}
+.brand{font-size:18px;font-weight:bold;}
+.gold{color:#c89b3c;}
+.container{max-width:1100px;margin:auto;padding:24px;}
+.card{background:#0f2f4d;padding:18px;border-radius:10px;margin-bottom:16px;border:1px solid #1f3b5c;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+input,select,textarea{width:100%;padding:10px;border-radius:6px;border:none;margin-top:6px;margin-bottom:10px;}
+.btn{background:#c89b3c;color:#000;font-weight:bold;border:none;padding:12px;width:100%;border-radius:6px;cursor:pointer;}
+.btn:hover{background:#e0b94f;}
+.small{font-size:12px;opacity:0.8;}
+.hidden{display:none;}
+.report{background:#fff;color:#000;padding:20px;border-radius:10px;}
+.badge{display:inline-block;background:#c89b3c;color:#000;padding:4px 8px;border-radius:6px;font-size:12px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand"><span class="gold">Albano Insurance Solutions</span> | California Risk Intelligence Desk</div>
+</div>
+
+<div class="container">
+
+<div id="lead" class="card">
+  <span class="badge">FREE CALIFORNIA INSURANCE BENCHMARK</span>
+  <h2>Contractor Risk & Brokerage Intelligence Report</h2>
+
+  <label>Business Name</label>
+  <input id="business">
+
+  <label>Contact Name</label>
+  <input id="contact">
+
+  <label>Email</label>
+  <input id="email">
+
+  <label>Phone</label>
+  <input id="phone">
+
+  <label>Trade</label>
+  <select id="trade" onchange="loadPain()">
+    <option>Electrician</option>
+    <option>Plumber</option>
+    <option>HVAC</option>
+    <option>General Contractor</option>
+    <option>Painter</option>
+    <option>Roofing</option>
+  </select>
+
+  <div id="pain" class="small"></div>
+
+  <label><input type="checkbox" id="consent"> I agree to receive my Albano Insurance Solutions report</label>
+
+  <button class="btn" onclick="submitLead()">Generate Broker Report</button>
+</div>
+
+<div id="dash" class="hidden card">
+  <h2>Leakage Score v2 Engine</h2>
+
+  <label>Height Exposure</label>
+  <input id="height" type="number">
+
+  <label>Hot Work</label>
+  <input id="hotwork" type="number">
+
+  <label>Claims</label>
+  <input id="claims" type="number">
+
+  <label>Subcontractor Exposure</label>
+  <input id="subexpo" type="number">
+
+  <button class="btn" onclick="runRisk()">Run Analysis</button>
+
+  <div id="output"></div>
+</div>
+
+<div id="report" class="hidden card">
+  <h2>Broker Intelligence Report</h2>
+  <div id="reportBox"></div>
+  <button class="btn" onclick="triggerRenewalEngine()">Activate Renewal Engine</button>
+</div>
+
+</div>
+
+<script>
+let lead = {};
+let reportData = {};
+
+const MAKE_WEBHOOK_URL = "https://hook.us2.make.com/r3k8n4tsh0lfn6fypy6welptxdkhigtq";
+const RENEWAL_WEBHOOK_URL = "https://hook.us2.make.com/renewal-engine";
+
+function $(id){ return document.getElementById(id); }
+
+function view(id){
+  var cards = document.querySelectorAll(".card");
+  for(var i=0;i<cards.length;i++){cards[i].classList.add("hidden");}
+  $(id).classList.remove("hidden");
+}
+
+function postWebhook(url,data){
+  fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)})
+  .catch(function(e){console.log("Webhook error",e);});
+}
+
+function loadPain(){
+  var map={Electrician:"Live circuit + wildfire risk",Plumber:"Water damage risk",HVAC:"Roof exposure", "General Contractor":"Sub risk",Painter:"Ladder risk",Roofing:"Fall risk"};
+  $("pain").innerText=map[$("trade").value];
+}
+
+function submitLead(){
+  if(!$("consent").checked){alert("Consent required");return;}
+
+  lead={
+    business:$("business").value,
+    contact:$("contact").value,
+    email:$("email").value,
+    phone:$("phone").value,
+    trade:$("trade").value
+  };
+
+  postWebhook(MAKE_WEBHOOK_URL,{event:"lead_created",lead:lead});
+  view("dash");
+}
+
+function runRisk(){
+  var h=+$("height").value||0;
+  var c=+$("claims").value||0;
+  var s=+$("subexpo").value||0;
+  var h2=+$("hotwork").value||0;
+
+  var score=(h*2)+(h2*3)+(c*10)+(s*1.5);
+
+  reportData={score:score,tier:score>60?"High":score>30?"Medium":"Low"};
+
+  $("output").innerHTML="Score: "+score+" Tier: "+reportData.tier;
+
+  generateReport();
+}
+
+function generateReport(){
+  var html="<p><b>Business:</b> "+lead.business+"</p>"+
+           "<p><b>Trade:</b> "+lead.trade+"</p>"+
+           "<p><b>Score:</b> "+reportData.score+"</p>"+
+           "<p><b>Tier:</b> "+reportData.tier+"</p>";
+
+  $("reportBox").innerHTML=html;
+
+  postWebhook(MAKE_WEBHOOK_URL,{event:"report_generated",lead:lead,reportData:reportData});
+
+  view("report");
+}
+
+function triggerRenewalEngine(){
+  var alerts=[90,60,30].map(function(d){return{days:d,lead:lead.business};});
+  postWebhook(RENEWAL_WEBHOOK_URL,{lead:lead,reportData:reportData,alerts:alerts});
+  alert("Renewal Engine Triggered");
+}
+
+console.log("Production Brokerage OS Live");
+</script>
+
+</body>
+</html>
