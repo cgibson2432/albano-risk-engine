@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Albano Insurance Solutions | Contractor Risk Intelligence</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#071a2f;color:#fff;}
 .header{background:#0b2a45;padding:18px 24px;border-bottom:1px solid #1f3b5c;}
@@ -15,6 +16,8 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#071a2f;color:#f
 input,select{width:100%;padding:10px;border-radius:6px;border:none;margin:6px 0;}
 .btn{background:#c89b3c;color:#000;font-weight:bold;border:none;padding:12px;width:100%;border-radius:6px;cursor:pointer;}
 .hidden{display:none;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+canvas{background:#fff;border-radius:8px;padding:10px;}
 </style>
 </head>
 <body>
@@ -45,7 +48,10 @@ input,select{width:100%;padding:10px;border-radius:6px;border:none;margin:6px 0;
   </select>
 
   <label>Estimated Annual Revenue ($)</label>
-  <input id="revenue" placeholder="e.g. 500000">
+  <input id="revenue">
+
+  <label>Current Annual Premium ($)</label>
+  <input id="currentPremium" placeholder="e.g. 12000">
 
   <label><input type="checkbox" id="consent"> Consent</label>
 
@@ -63,17 +69,32 @@ input,select{width:100%;padding:10px;border-radius:6px;border:none;margin:6px 0;
 </div>
 
 <div id="report" class="hidden card">
-  <h2>Executive Report Ready</h2>
+  <h2>Executive Report Dashboard</h2>
+
+  <div class="grid">
+    <div>
+      <canvas id="premiumChart"></canvas>
+    </div>
+    <div>
+      <canvas id="riskChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Benchmark Summary</h3>
+    <p id="benchmarkText"></p>
+  </div>
+
   <button class="btn" onclick="generatePDF()">Download 2-Page Benchmark Report</button>
 </div>
 
 </div>
 
 <script>
-let lead={}, reportData={}, submissionData={}, brokerStrategy={};
+let lead={}, reportData={}, brokerStrategy={};
 const MAKE_WEBHOOK_URL="https://hook.us2.make.com/r3k8n4tsh0lfn6fypy6welptxdkhigtq";
 function $(id){return document.getElementById(id);} 
-function view(id){document.querySelectorAll('.card').forEach(c=>c.classList.add('hidden'));$(id).classList.remove('hidden');}
+function view(id){document.querySelectorAll('.card').forEach(c=>c.classList.add('hidden'));$(id).classList.remove('hidden');} 
 function postWebhook(data){fetch(MAKE_WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).catch(()=>{});} 
 
 function submitLead(){
@@ -83,161 +104,76 @@ function submitLead(){
     contact:$("contact").value,
     email:$("email").value,
     trade:$("trade").value,
-    revenue:parseFloat((""+$("revenue").value).replace(/,/g,''))||0
+    revenue:parseFloat($("revenue").value)||0,
+    currentPremium:parseFloat($("currentPremium").value)||0
   };
   postWebhook({event:"lead_created",lead});
   view("dash");
 }
 
 const CA_RATES={ Electrician:9.5, Plumber:8.2, HVAC:7.8 };
-
-const WC_CLASS_CODES={
-  Electrician:[{code:"5190", rate:5.25}],
-  Plumber:[{code:"5183", rate:4.75}],
-  HVAC:[{code:"5537", rate:4.10}]
-};
-
-const INSURANCE_CARRIERS=[
-  {name:"UFG Insurance",url:"https://www.ufginsurance.com/"},
-  {name:"AmTrust Financial",url:"https://amtrustfinancial.com/industries"},
-  {name:"Nationwide",url:"https://www.nationwide.com/"},
-  {name:"Liberty Mutual Business",url:"https://business.libertymutual.com/commercial-solutions/"}
-];
-
-function carrierFitEngine(score,factors){
-  let carriers=[];
-
-  if(factors.lossProfile==="Severe Loss Profile"){
-    return [{name:"E&S Market",fit:"Required"}];
-  }
-
-  if(score<35){
-    carriers.push({name:"Travelers",fit:"Preferred"},{name:"Nationwide",fit:"Preferred"});
-  } else if(score<60){
-    carriers.push({name:"Hartford",fit:"Standard"},{name:"Guard",fit:"Standard"});
-  } else {
-    carriers.push({name:"E&S Market",fit:"Non-Preferred"});
-  }
-
-  if(factors.claims>2 || factors.claimValue>250000){
-    carriers=carriers.filter(c=>c.fit!=="Preferred");
-  }
-  if(factors.height>10){
-    carriers=carriers.filter(c=>c.name!=="Travelers");
-  }
-  if(factors.claimValue>100000){
-    carriers=carriers.filter(c=>c.name!=="Nationwide");
-  }
-
-  return carriers;
-}
+const WC_CLASS_CODES={ Electrician:[{code:"5190", rate:5.25}], Plumber:[{code:"5183", rate:4.75}], HVAC:[{code:"5537", rate:4.10}] };
 
 function runRisk(){
-  let h=+$("height").value||0;
-  let hw=+$("hotwork").value||0;
-  let c=+$("claims").value||0;
-  let cv=parseFloat((""+$("claimvalue").value).replace(/,/g,''))||0;
-  let s=+$("subexpo").value||0;
+  let h=+$('height').value||0;
+  let hw=+$('hotwork').value||0;
+  let c=+$('claims').value||0;
+  let cv=+$('claimvalue').value||0;
+  let s=+$('subexpo').value||0;
 
-  let claimSeverityFactor=cv>0?Math.min(cv/10000,20):0;
-  let score=(h*2)+(hw*3)+(c*8)+(claimSeverityFactor*5)+(s*1.5);
+  let score=(h*2)+(hw*3)+(c*8)+((cv/10000)*5)+(s*1.5);
+  let lossProfile=score>60?'Severe':score>30?'Moderate':'Clean';
 
-  let lossProfile="Clean Loss Profile";
-  if(score>=60||c>2||cv>100000){lossProfile="Severe Loss Profile";}
-  else if(score>=30||c>=2||cv>25000){lossProfile="Moderate Loss Profile";}
+  let benchmark=(lead.revenue/1000)*(CA_RATES[lead.trade]||8);
+  let wc=(lead.revenue*0.3/100)*(WC_CLASS_CODES[lead.trade][0].rate);
+  let modeled=benchmark+wc+(score*120);
 
-  let rate=CA_RATES[lead.trade]||8;
-  let benchmarkPremium=(lead.revenue/1000)*rate;
+  let current=lead.currentPremium||0;
 
-  let payroll=lead.revenue*0.3;
-  let wcRate=WC_CLASS_CODES[lead.trade]?.[0]?.rate||4;
-  let wcPremium=(payroll/100)*wcRate;
+  reportData={score,lossProfile,benchmark,modeled,current};
 
-  let riskLoad=score*120;
-  let estimatedPremium=benchmarkPremium+riskLoad+wcPremium;
+  renderCharts();
+  view('report');
+  postWebhook({event:'risk_scored',reportData});
+}
 
-  // SUBMISSION READINESS ENGINE
-  let submissionScore=100;
-  if(lossProfile==="Severe Loss Profile") submissionScore-=40;
-  if(c>2) submissionScore-=20;
-  if(cv>100000) submissionScore-=15;
-  if(h>10) submissionScore-=10;
-  if(hw>5) submissionScore-=10;
+function renderCharts(){
+  new Chart($("premiumChart"),{
+    type:'bar',
+    data:{
+      labels:['Current','Benchmark','Modeled'],
+      datasets:[{data:[reportData.current,reportData.benchmark,reportData.modeled]}]
+    }
+  });
 
-  submissionScore=Math.max(0,submissionScore);
+  new Chart($("riskChart"),{
+    type:'doughnut',
+    data:{
+      labels:['Risk Score','Remaining'],
+      datasets:[{data:[reportData.score,100-reportData.score]}]
+    }
+  });
 
-  let submissionTier="Standard Market Ready";
-  if(submissionScore<40) submissionTier="E&S Required";
-  else if(submissionScore<70) submissionTier="Conditional Market";
-
-  // BROKER STRATEGY LAYER
-  brokerStrategy={
-    action: submissionTier,
-    guidance:
-      submissionTier==="E&S Required"?
-      "Clean up loss narrative, reduce subcontractor exposure, prepare surplus lines submission" :
-      submissionTier==="Conditional Market"?
-      "Pre-underwriting review required. Strengthen risk presentation before standard market submission" :
-      "Proceed to standard market submission with preferred carriers"
-  };
-
-  let carriers=carrierFitEngine(score,{height:h,hotwork:hw,claims:c,claimValue:cv,sub:s,lossProfile});
-
-  reportData={
-    score,
-    tier:score>60?"Non-Preferred":score>30?"Standard":"Preferred",
-    lossProfile,
-    submissionScore,
-    submissionTier,
-    benchmarkPremium:Math.round(benchmarkPremium),
-    estimatedPremium:Math.round(estimatedPremium),
-    premiumImpact:Math.round(estimatedPremium-benchmarkPremium),
-    wcPremium:Math.round(wcPremium),
-    carriers,
-    factors:{height:h,hotwork:hw,claims:c,claimValue:cv,sub:s}
-  };
-
-  postWebhook({event:"risk_scored",lead,reportData,brokerStrategy});
-  view("report");
+  $("benchmarkText").innerText=
+    `Loss Profile: ${reportData.lossProfile} | Benchmark Premium: $${Math.round(reportData.benchmark)} | Modeled Premium: $${Math.round(reportData.modeled)}`;
 }
 
 function generatePDF(){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  doc.setFillColor(11,42,69);
-  doc.rect(0,0,210,40,'F');
-  doc.setTextColor(200,155,60);
-  doc.text("Albano Insurance Solutions",10,20);
+  doc.text("Contractor Risk Benchmark Report",10,20);
+  doc.text("Business: "+lead.business,10,30);
+  doc.text("Trade: "+lead.trade,10,40);
 
-  doc.setTextColor(0,0,0);
-  doc.text("California Benchmark & Risk Strategy",10,55);
-  doc.text("Business: "+lead.business,10,65);
-  doc.text("Trade: "+lead.trade,10,72);
+  doc.text("Current Premium: $"+reportData.current,10,55);
+  doc.text("Benchmark: $"+Math.round(reportData.benchmark),10,65);
+  doc.text("Modeled: $"+Math.round(reportData.modeled),10,75);
 
-  doc.text("Estimated Premium: $"+reportData.estimatedPremium,10,90);
-  doc.text("Benchmark Premium: $"+reportData.benchmarkPremium,10,98);
-  doc.text("WC Estimated: $"+reportData.wcPremium,10,106);
+  doc.text("Risk Score: "+reportData.score,10,90);
+  doc.text("Loss Profile: "+reportData.lossProfile,10,100);
 
-  doc.text("Submission Readiness: "+reportData.submissionScore+" ("+reportData.submissionTier+")",10,120);
-
-  doc.addPage();
-  doc.text("Broker Strategy",10,20);
-  doc.text(brokerStrategy.action,10,35);
-  doc.text(brokerStrategy.guidance,10,50);
-
-  let y=70;
-  doc.text("Carrier Fit:",10,y);
-  y+=10;
-  reportData.carriers.forEach(c=>{
-    doc.text(c.name+" - "+c.fit,10,y);
-    y+=8;
-  });
-
-  doc.text("Loss Profile: "+reportData.lossProfile,10,y+10);
-
-  doc.save("Albano_Submission_Strategy_Report.pdf");
-  postWebhook({event:"pdf_generated",lead,reportData,brokerStrategy});
+  doc.save("Risk_Report.pdf");
 }
 </script>
 
