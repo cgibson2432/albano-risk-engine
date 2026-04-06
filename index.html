@@ -22,8 +22,8 @@ canvas{height:260px !important;}
 .red{background:#fdeaea;color:#b30000;}
 .orange{background:#fff5e6;color:#b26b00;}
 .green{background:#e6f6ec;color:#1f9d55;}
-.subtle{font-size:12px;color:#666;margin-top:6px;}
 .exec{background:#eef4fb;padding:15px;border-radius:8px;margin-top:15px;}
+.insights{background:#f9fbff;padding:12px;border-radius:8px;margin-top:10px;}
 </style>
 </head>
 <body>
@@ -36,9 +36,6 @@ canvas{height:260px !important;}
 <h3>Identify hidden cost & risk in your insurance program</h3>
 <input id="business" placeholder="Business Name">
 <input id="email" placeholder="Email">
-<input id="cslb" placeholder="CSLB # (optional)">
-<div class="subtle">Enter CSLB # to enhance your report (optional)</div>
-
 <select id="trade">
 <option>Electrician</option>
 <option>Plumber</option>
@@ -60,9 +57,8 @@ canvas{height:260px !important;}
 
 <div class="card" id="report" style="display:none">
 <div id="alertBox"></div>
-<div id="renewalHint"></div>
-
-<div class="exec" id="execSummary"></div>
+<div id="execSummary" class="exec"></div>
+<div id="insights" class="insights"></div>
 
 <div class="grid">
 <canvas id="premiumChart"></canvas>
@@ -77,13 +73,8 @@ canvas{height:260px !important;}
 
 </div>
 
-<div style="background:#1c1c1c;color:#fff;padding:20px;text-align:center;font-size:13px;">
-Albano Insurance Solutions | 9197 Greenback Lane, Suite E, Orangevale CA 95662 | License #0442296
-</div>
-
 <script>
 let chart1, chart2;
-
 function parseNumber(v){return parseFloat((v||'').replace(/,/g,''))||0}
 function fmt(n){return "$"+Math.round(n).toLocaleString()}
 
@@ -107,6 +98,34 @@ return{
 };
 }
 
+function analyzeLines(lead, bench){
+let findings=[];
+
+function check(line,name){
+let current=lead[line];
+let expected=bench[line];
+let diff=current-expected;
+let pct=(diff/expected)*100;
+
+if(diff>0){
+ if(pct>25) findings.push(`🔴 ${name}: Significantly higher than expected (${Math.round(pct)}%). Likely pricing inefficiency or misclassification.`);
+ else if(pct>10) findings.push(`🟠 ${name}: Moderately above benchmark (${Math.round(pct)}%). Review coverage structure and carrier.`);
+}
+
+if(diff<0){
+ if(Math.abs(pct)>20) findings.push(`⚠️ ${name}: Lower than expected. Possible underinsurance or missing endorsements.`);
+}
+}
+
+check('gl','General Liability');
+check('wc','Workers Compensation');
+check('auto','Commercial Auto');
+check('equip','Equipment');
+check('umbrella','Umbrella');
+
+return findings;
+}
+
 function submitLead(){
 if(chart1) chart1.destroy();
 if(chart2) chart2.destroy();
@@ -127,39 +146,35 @@ lead.total=lead.gl+lead.wc+lead.auto+lead.equip+lead.umbrella;
 let bench=benchmark(lead.trade,lead.revenue);
 let benchTotal=Object.values(bench).reduce((a,b)=>a+b,0);
 
-let variance=((lead.total/benchTotal)-1)*100;
+let findings=analyzeLines(lead,bench);
 
-alertBox.innerHTML = variance>20
- ? '<div class="alert red">You are likely overpaying. This impacts your ability to win jobs.</div>'
- : '<div class="alert orange">There may be optimization opportunities.</div>';
+alertBox.innerHTML = `<div class="alert orange">Analysis complete. See key findings below.</div>`;
 
-// EXEC SUMMARY
+insights.innerHTML = '<b>Key Findings & Recommendations:</b><br><br>' + findings.join('<br>');
+
 execSummary.innerHTML = `
 <b>Executive Summary:</b><br><br>
-We analyzed your insurance program based on your reported revenue and trade classification. Using California contractor benchmarks (derived from payroll ratios, WCIRB rates, and typical premium-to-revenue ratios), we estimated what a similar business should be paying.<br><br>
-<b>Your Total Insurance Cost:</b> ${fmt(lead.total)}<br>
-<b>Industry Expected Cost:</b> ${fmt(benchTotal)}<br><br>
-<b>Impact:</b> Higher insurance costs can force you to overbid jobs, making you less competitive.<br><br>
-<b>Recommendation:</b> A structured review of your Workers Compensation classification, liability structure, and carrier placement is recommended.<br><br>
-<b>Next Step:</b> Contact Chris Gibson at 916-864-4983 or cgibson@addlins.com for a full strategy review.
+We analyzed your insurance program against California contractor benchmarks.<br><br>
+<b>Total Cost:</b> ${fmt(lead.total)} vs Expected ${fmt(benchTotal)}<br><br>
+<b>Key Issues Identified:</b><br>${findings.join('<br>')}<br><br>
+<b>Next Step:</b> Contact Chris Gibson at 916-864-4983 or cgibson@addlins.com
 `;
 
 chart1 = new Chart(document.getElementById('premiumChart'),{
  type:'bar',
- data:{labels:['GL','WC','Auto','Equip','Umb'],datasets:[{label:'Current',data:[lead.gl,lead.wc,lead.auto,lead.equip,lead.umbrella]},{label:'Industry Expected',data:Object.values(bench)}]}
+ data:{labels:['GL','WC','Auto','Equip','Umb'],datasets:[{label:'Current',data:[lead.gl,lead.wc,lead.auto,lead.equip,lead.umbrella]},{label:'Expected',data:Object.values(bench)}]}
 });
 
 chart2 = new Chart(document.getElementById('riskChart'),{
  type:'bar',
- data:{labels:['Total Cost vs Expected'],datasets:[{data:[lead.total,benchTotal]}]}
+ data:{labels:['Total'],datasets:[{data:[lead.total,benchTotal]}]}
 });
 
 comparisonTable.innerHTML=`
 <tr><th>Coverage</th><th>Current</th><th>Expected</th></tr>
-<tr><td>Total</td><td>${fmt(lead.total)}</td><td>${fmt(benchTotal)}</td></tr>
-`;
+<tr><td>Total</td><td>${fmt(lead.total)}</td><td>${fmt(benchTotal)}</td></tr>`;
 
-summary.innerText=`Difference: ${fmt(lead.total-benchTotal)}`;
+summary.innerText='See findings above for detailed recommendations.';
 
 report.style.display='block';
 leadCard.style.display='none';
@@ -168,23 +183,13 @@ leadCard.style.display='none';
 function downloadPDF(){
 const {jsPDF}=window.jspdf;
 const doc=new jsPDF();
+let img1=chart1.toBase64Image();
+let text=doc.splitTextToSize(execSummary.innerText,180);
 
-let img1 = chart1.toBase64Image();
-let img2 = chart2.toBase64Image();
-
-// PAGE 1
- doc.text('Insurance Risk Analysis Report',10,10);
- doc.addImage(img1,'PNG',10,20,180,60);
- doc.text(execSummary.innerText || execSummary.innerHTML.replace(/<[^>]+>/g,''),10,90);
-
-// PAGE 2
- doc.addPage();
- doc.addImage(img2,'PNG',10,20,180,60);
- doc.text(summary.innerText,10,100);
-
- doc.text('Contact Chris Gibson | 916-864-4983 | cgibson@addlins.com',10,130);
-
- doc.save('Albano-Executive-Report.pdf');
+doc.text('Insurance Risk Analysis Report',10,10);
+doc.addImage(img1,'PNG',10,20,180,60);
+doc.text(text,10,90);
+doc.save('Albano-Report.pdf');
 }
 </script>
 
