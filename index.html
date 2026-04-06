@@ -3,177 +3,138 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Albano Insurance Solutions | Contractor Risk Intelligence</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<title>Albano Insurance Solutions | Insurance Risk Analysis v10</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#071a2f;color:#fff;}
-.header{background:#0b2a45;padding:18px 24px;border-bottom:1px solid #1f3b5c;}
-.brand{font-size:18px;font-weight:bold;}
-.gold{color:#c89b3c;}
-.container{max-width:1000px;margin:auto;padding:24px;}
-.card{background:#0f2f4d;padding:18px;border-radius:10px;margin-bottom:16px;border:1px solid #1f3b5c;}
-input,select{width:100%;padding:10px;border-radius:6px;border:none;margin:6px 0;}
-.btn{background:#c89b3c;color:#000;font-weight:bold;border:none;padding:12px;width:100%;border-radius:6px;cursor:pointer;}
-.hidden{display:none;}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-canvas{background:#fff;border-radius:8px;padding:10px;}
+body{margin:0;font-family:'Inter',sans-serif;background:#f7f9fc;color:#0a0a0a;}
+.header{background:#0b2a45;color:#fff;padding:20px;font-size:22px;font-weight:700;}
+.container{max-width:1100px;margin:auto;padding:20px;}
+.card{background:#fff;padding:20px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.08);margin-bottom:20px;}
+input,select{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #ccc;}
+button{background:#0b2a45;color:#fff;padding:14px;border:none;border-radius:8px;cursor:pointer;width:100%;font-weight:700;margin-top:8px;}
+.alert{padding:12px;border-radius:8px;margin-top:10px;font-weight:600;}
+.red{background:#fdeaea;color:#b30000;}
+.orange{background:#fff5e6;color:#b26b00;}
+.green{background:#e6f6ec;color:#1f9d55;}
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="brand"><span class="gold">Albano Insurance Solutions</span> | Risk Intelligence Desk</div>
-</div>
+<div class="header">Albano Insurance Solutions | Insurance Risk Analysis Report</div>
 
 <div class="container">
 
-<div id="lead" class="card">
-  <h2>Contractor Risk Report</h2>
+<div class="card" id="leadCard">
+<h3>Find hidden cost & renewal risk in your insurance</h3>
+<input id="business" placeholder="Business Name">
+<input id="email" placeholder="Email">
+<input id="cslb" placeholder="CSLB #">
 
-  <label>Business Name</label>
-  <input id="business">
+<select id="trade">
+<option>Electrician</option>
+<option>Plumber</option>
+<option>Painter</option>
+<option>HVAC</option>
+<option>General Contractor</option>
+</select>
 
-  <label>Contact</label>
-  <input id="contact">
+<input id="revenue" placeholder="Annual Revenue ($)">
 
-  <label>Email</label>
-  <input id="email">
+<h4>Current Insurance Premium Input</h4>
+<input id="wcCarrier" placeholder="Current WC Insurance Company">
+<input id="wcRenewal" placeholder="WC Renewal Date (MM/DD/YYYY)">
+<input id="wc" placeholder="Workers Comp Premium ($)">
 
-  <label>Trade</label>
-  <select id="trade">
-    <option>Electrician</option>
-    <option>Plumber</option>
-    <option>HVAC</option>
-  </select>
+<input id="gl" placeholder="General Liability ($)">
+<input id="auto" placeholder="Commercial Auto ($)">
+<input id="equip" placeholder="Equipment ($)">
+<input id="umbrella" placeholder="Umbrella ($)">
 
-  <label>Estimated Annual Revenue ($)</label>
-  <input id="revenue">
-
-  <label>Current Annual Premium ($)</label>
-  <input id="currentPremium" placeholder="e.g. 12000">
-
-  <label><input type="checkbox" id="consent"> Consent</label>
-
-  <button class="btn" onclick="submitLead()">Generate Report</button>
+<button onclick="lookupCSLB()">Auto-Fill from CSLB</button>
+<button onclick="submitLead()">Generate Report</button>
 </div>
 
-<div id="dash" class="hidden card">
-  <h2>Risk Inputs</h2>
-  <input id="height" placeholder="Height Exposure">
-  <input id="hotwork" placeholder="Hot Work">
-  <input id="claims" placeholder="Number of Claims (past 3-5 yrs)">
-  <input id="claimvalue" placeholder="Total Value of Claims ($)">
-  <input id="subexpo" placeholder="Sub Exposure">
-  <button class="btn" onclick="runRisk()">Analyze</button>
-</div>
-
-<div id="report" class="hidden card">
-  <h2>Executive Report Dashboard</h2>
-
-  <div class="grid">
-    <div>
-      <canvas id="premiumChart"></canvas>
-    </div>
-    <div>
-      <canvas id="riskChart"></canvas>
-    </div>
-  </div>
-
-  <div class="card">
-    <h3>Benchmark Summary</h3>
-    <p id="benchmarkText"></p>
-  </div>
-
-  <button class="btn" onclick="generatePDF()">Download 2-Page Benchmark Report</button>
+<div class="card" id="report" style="display:none">
+<div id="renewalAlert"></div>
+<p id="summary"></p>
 </div>
 
 </div>
 
 <script>
-let lead={}, reportData={}, brokerStrategy={};
-const MAKE_WEBHOOK_URL="https://hook.us2.make.com/r3k8n4tsh0lfn6fypy6welptxdkhigtq";
-function $(id){return document.getElementById(id);} 
-function view(id){document.querySelectorAll('.card').forEach(c=>c.classList.add('hidden'));$(id).classList.remove('hidden');} 
-function postWebhook(data){fetch(MAKE_WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).catch(()=>{});} 
+function parseNumber(v){return parseFloat((v||'').replace(/,/g,''))||0}
+
+// CSLB + PREFILL ENGINE
+async function lookupCSLB(){
+const license=document.getElementById('cslb').value;
+
+try{
+const res=await fetch("https://hook.us2.make.com/YOUR_WEBHOOK_URL",{
+ method:"POST",
+ headers:{"Content-Type":"application/json"},
+ body:JSON.stringify({cslb:license})
+});
+
+const data=await res.json();
+
+if(data){
+ document.getElementById('wcCarrier').value=data.carrier || '';
+ document.getElementById('wcRenewal').value=data.expiration || '';
+}
+
+}catch(e){
+ alert("CSLB lookup failed. Check webhook.");
+}
+}
+
+// RENEWAL TRIGGER ENGINE
+function checkRenewal(dateStr){
+if(!dateStr) return {msg:'No renewal date provided',className:'orange'};
+
+const today=new Date();
+const renewal=new Date(dateStr);
+const diff=Math.ceil((renewal-today)/(1000*60*60*24));
+
+if(diff<=0) return {msg:'Policy may be expired or renewing now. Immediate action required.',className:'red'};
+if(diff<=30) return {msg:'Renewal within 30 days. Highest leverage time to reduce cost.',className:'red'};
+if(diff<=60) return {msg:'Renewal within 60 days. Start marketing to carriers now.',className:'orange'};
+if(diff<=90) return {msg:'Renewal within 90 days. Optimization window open.',className:'orange'};
+
+return {msg:'Renewal is outside 90 days. Early planning opportunity.',className:'green'};
+}
 
 function submitLead(){
-  if(!$("consent").checked){alert("Consent required");return;}
-  lead={
-    business:$("business").value,
-    contact:$("contact").value,
-    email:$("email").value,
-    trade:$("trade").value,
-    revenue:parseFloat($("revenue").value)||0,
-    currentPremium:parseFloat($("currentPremium").value)||0
-  };
-  postWebhook({event:"lead_created",lead});
-  view("dash");
-}
+let lead={
+ business:business.value,
+ email:email.value,
+ cslb:cslb.value,
+ wcCarrier:wcCarrier.value,
+ wcRenewal:wcRenewal.value,
+ wc:parseNumber(wc.value),
+ gl:parseNumber(gl.value),
+ auto:parseNumber(auto.value),
+ equip:parseNumber(equip.value),
+ umbrella:parseNumber(umbrella.value)
+};
 
-const CA_RATES={ Electrician:9.5, Plumber:8.2, HVAC:7.8 };
-const WC_CLASS_CODES={ Electrician:[{code:"5190", rate:5.25}], Plumber:[{code:"5183", rate:4.75}], HVAC:[{code:"5537", rate:4.10}] };
+lead.total=lead.wc+lead.gl+lead.auto+lead.equip+lead.umbrella;
 
-function runRisk(){
-  let h=+$('height').value||0;
-  let hw=+$('hotwork').value||0;
-  let c=+$('claims').value||0;
-  let cv=+$('claimvalue').value||0;
-  let s=+$('subexpo').value||0;
+// renewal logic
+const renewal=checkRenewal(lead.wcRenewal);
+renewalAlert.innerHTML=`<div class="alert ${renewal.className}">${renewal.msg}</div>`;
 
-  let score=(h*2)+(hw*3)+(c*8)+((cv/10000)*5)+(s*1.5);
-  let lossProfile=score>60?'Severe':score>30?'Moderate':'Clean';
+summary.innerText=`CSLB #: ${lead.cslb}\nWC Carrier: ${lead.wcCarrier}\nRenewal Date: ${lead.wcRenewal}\n\nTotal Insurance Cost: $${lead.total.toLocaleString()}\n\nThis directly impacts your ability to competitively bid jobs.`;
 
-  let benchmark=(lead.revenue/1000)*(CA_RATES[lead.trade]||8);
-  let wc=(lead.revenue*0.3/100)*(WC_CLASS_CODES[lead.trade][0].rate);
-  let modeled=benchmark+wc+(score*120);
+// SEND TO MAKE
+fetch("https://hook.us2.make.com/YOUR_WEBHOOK_URL",{
+ method:"POST",
+ headers:{"Content-Type":"application/json"},
+ body:JSON.stringify(lead)
+}).catch(()=>{});
 
-  let current=lead.currentPremium||0;
-
-  reportData={score,lossProfile,benchmark,modeled,current};
-
-  renderCharts();
-  view('report');
-  postWebhook({event:'risk_scored',reportData});
-}
-
-function renderCharts(){
-  new Chart($("premiumChart"),{
-    type:'bar',
-    data:{
-      labels:['Current','Benchmark','Modeled'],
-      datasets:[{data:[reportData.current,reportData.benchmark,reportData.modeled]}]
-    }
-  });
-
-  new Chart($("riskChart"),{
-    type:'doughnut',
-    data:{
-      labels:['Risk Score','Remaining'],
-      datasets:[{data:[reportData.score,100-reportData.score]}]
-    }
-  });
-
-  $("benchmarkText").innerText=
-    `Loss Profile: ${reportData.lossProfile} | Benchmark Premium: $${Math.round(reportData.benchmark)} | Modeled Premium: $${Math.round(reportData.modeled)}`;
-}
-
-function generatePDF(){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-
-  doc.text("Contractor Risk Benchmark Report",10,20);
-  doc.text("Business: "+lead.business,10,30);
-  doc.text("Trade: "+lead.trade,10,40);
-
-  doc.text("Current Premium: $"+reportData.current,10,55);
-  doc.text("Benchmark: $"+Math.round(reportData.benchmark),10,65);
-  doc.text("Modeled: $"+Math.round(reportData.modeled),10,75);
-
-  doc.text("Risk Score: "+reportData.score,10,90);
-  doc.text("Loss Profile: "+reportData.lossProfile,10,100);
-
-  doc.save("Risk_Report.pdf");
+report.style.display='block';
+leadCard.style.display='none';
 }
 </script>
 
