@@ -155,113 +155,92 @@ function downloadPDF(){
 const {jsPDF}=window.jspdf;
 const doc=new jsPDF();
 
-// add logo
-let img = new Image();
-img.src = 'logo.png';
-doc.addImage(img, 'PNG', 10, 5, 40, 15);
-
-let execText = document.getElementById('execSummary').innerText;
-let methodText = document.getElementById('methodology').innerText;
-let table = document.getElementById('comparisonTable');
-
 let y=25;
 
-// Title
-doc.setFontSize(14);
-doc.text('Insurance Risk Analysis Report',10,y);
-y+=10;
+// --- Logo (ensure it renders reliably) ---
+const img = new Image();
+img.src = 'logo.png';
 
-// Executive Summary
-let splitExec = doc.splitTextToSize(execText,180);
-doc.setFontSize(10);
-doc.text(splitExec,10,y);
-y+=splitExec.length*5+5;
+img.onload = function(){
 
-// Methodology
-let splitMethod = doc.splitTextToSize(methodText,180);
-doc.text(splitMethod,10,y);
-y+=splitMethod.length*5+10;
+ doc.addImage(img, 'PNG', 10, 5, 40, 15);
 
-// Table Header Styling
-const colX = [10, 60, 100, 140, 170];
-const colHeaders = ['Coverage','Current','Expected','Variance','%'];
+ let execText = document.getElementById('execSummary').innerText;
+ let methodText = document.getElementById('methodology').innerText;
+ let table = document.getElementById('comparisonTable');
 
-doc.setFillColor(11,42,69);
-doc.setTextColor(255,255,255);
-doc.rect(10,y-5,190,8,'F');
-colHeaders.forEach((h,i)=>{
- doc.text(h, colX[i], y);
-});
+ // Title
+ doc.setFontSize(14);
+ doc.text('Insurance Risk Analysis Report',10,y);
+ y+=10;
 
-y+=8;
+ // Executive Summary
+ let splitExec = doc.splitTextToSize(execText,180);
+ doc.setFontSize(10);
+ doc.text(splitExec,10,y);
+ y+=splitExec.length*5+5;
 
-doc.setTextColor(0,0,0);
+ // Methodology
+ let splitMethod = doc.splitTextToSize(methodText,180);
+ doc.text(splitMethod,10,y);
+ y+=splitMethod.length*5+10;
 
-// Table Rows with Heatmap
-Array.from(table.rows).slice(1).forEach(row=>{
- if(y>270){ doc.addPage(); y=20; }
+ // Table Header
+ const colX = [10, 60, 100, 140, 170];
+ const colHeaders = ['Coverage','Current','Expected','Variance','%'];
 
- let cells = Array.from(row.cells);
- let pct = parseFloat(cells[4].innerText.replace('%','')) || 0;
-
- // Heatmap colors
- if(pct > 25){ doc.setFillColor(253,234,234); }
- else if(pct > 10){ doc.setFillColor(255,245,230); }
- else{ doc.setFillColor(230,246,236); }
-
+ doc.setFillColor(11,42,69);
+ doc.setTextColor(255,255,255);
  doc.rect(10,y-5,190,8,'F');
+ colHeaders.forEach((h,i)=> doc.text(h, colX[i], y));
+ y+=8;
 
- cells.forEach((cell,i)=>{
-  doc.text(cell.innerText, colX[i], y);
+ doc.setTextColor(0,0,0);
+
+ // Table Rows
+ Array.from(table.rows).slice(1).forEach(row=>{
+  if(y>270){
+   addFooter(doc);
+   doc.addPage();
+   y=20;
+   addHeader(doc);
+  }
+
+  let cells = Array.from(row.cells);
+  let pct = parseFloat(cells[4].innerText.replace('%','')) || 0;
+
+  if(pct > 25){ doc.setFillColor(253,234,234); }
+  else if(pct > 10){ doc.setFillColor(255,245,230); }
+  else{ doc.setFillColor(230,246,236); }
+
+  doc.rect(10,y-5,190,8,'F');
+
+  cells.forEach((cell,i)=>{
+   doc.text(cell.innerText, colX[i], y);
+  });
+
+  y+=8;
  });
 
- y+=8;
-});
+ // Footer
+ addFooter(doc);
 
-// Footer
-doc.setFontSize(8);
-doc.text('Albano Insurance Solutions | License #0442296',10,290);
-doc.text('Contact: Chris Gibson 916-864-4983',120,290);
-
-// Save
-doc.save('Albano-Executive-Report.pdf');
-}=window.jspdf;
-const doc=new jsPDF();
-
-// add logo
-let img = new Image();
-img.src = 'logo.png';
-doc.addImage(img, 'PNG', 10, 5, 40, 15);
-
-let execText = document.getElementById('execSummary').innerText;
-let methodText = document.getElementById('methodology').innerText;
-let table = document.getElementById('comparisonTable');
-
-let y=25;
-
-doc.setFontSize(14);
-doc.text('Insurance Risk Analysis Report',10,y);
-y+=10;
-
-let splitExec = doc.splitTextToSize(execText,180);
-doc.setFontSize(10);
-doc.text(splitExec,10,y);
-y+=splitExec.length*5;
-
-let splitMethod = doc.splitTextToSize(methodText,180);
-doc.text(splitMethod,10,y);
-y+=splitMethod.length*5+10;
-
-Array.from(table.rows).forEach(row=>{
- let rowText = Array.from(row.cells).map(c=>c.innerText).join(' | ');
- if(y>280){ doc.addPage(); y=20; }
- doc.text(rowText,10,y);
- y+=6;
-});
-
-doc.save('Albano-Report.pdf');
+ doc.save('Albano-Executive-Report.pdf');
+};
 }
-</script>
 
-</body>
-</html>
+function addHeader(doc){
+ doc.setFillColor(11,42,69);
+ doc.rect(0,0,210,12,'F');
+ doc.setTextColor(255,255,255);
+ doc.setFontSize(10);
+ doc.text('Albano Insurance Solutions',10,8);
+ doc.setTextColor(0,0,0);
+}
+
+function addFooter(doc){
+ doc.setFontSize(8);
+ doc.setTextColor(0,0,0);
+ doc.text('Albano Insurance Solutions | License #0442296',10,290);
+ doc.text('Chris Gibson | 916-864-4983 | cgibson@addlins.com',80,290);
+}
