@@ -14,16 +14,9 @@ body{margin:0;font-family:'Inter',sans-serif;background:#f7f9fc;color:#0a0a0a;}
 .card{background:#fff;padding:20px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.08);margin-bottom:20px;}
 input,select{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #ccc;}
 button{background:#0b2a45;color:#fff;padding:14px;border:none;border-radius:8px;cursor:pointer;width:100%;font-weight:700;}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-canvas{height:260px !important;}
 .table{width:100%;border-collapse:collapse;margin-top:10px;}
-.table td,.table th{border:1px solid #ddd;padding:8px;font-size:13px;}
-.alert{padding:12px;border-radius:8px;margin-bottom:12px;font-weight:600;}
-.red{background:#fdeaea;color:#b30000;}
-.orange{background:#fff5e6;color:#b26b00;}
-.green{background:#e6f6ec;color:#1f9d55;}
+.table td,.table th{border:1px solid #ddd;padding:8px;font-size:13px;text-align:left;}
 .exec{background:#eef4fb;padding:15px;border-radius:8px;margin-top:15px;}
-.insights{background:#f9fbff;padding:12px;border-radius:8px;margin-top:10px;}
 </style>
 </head>
 <body>
@@ -33,7 +26,6 @@ canvas{height:260px !important;}
 <div class="container">
 
 <div class="card" id="leadCard">
-<h3>Identify hidden cost & risk in your insurance program</h3>
 <input id="business" placeholder="Business Name">
 <input id="email" placeholder="Email">
 <select id="trade">
@@ -56,25 +48,14 @@ canvas{height:260px !important;}
 </div>
 
 <div class="card" id="report" style="display:none">
-<div id="alertBox"></div>
 <div id="execSummary" class="exec"></div>
-<div id="insights" class="insights"></div>
-
-<div class="grid">
-<canvas id="premiumChart"></canvas>
-<canvas id="riskChart"></canvas>
-</div>
-
 <table class="table" id="comparisonTable"></table>
-<p id="summary"></p>
-
-<button onclick="downloadPDF()">Download Full Report</button>
+<button onclick="downloadPDF()">Download Executive Report</button>
 </div>
 
 </div>
 
 <script>
-let chart1, chart2;
 function parseNumber(v){return parseFloat((v||'').replace(/,/g,''))||0}
 function fmt(n){return "$"+Math.round(n).toLocaleString()}
 
@@ -98,41 +79,32 @@ return{
 };
 }
 
-function analyzeLines(lead, bench){
-let findings=[];
+function analyze(lead,bench){
+let rows=[];
+let impacts=[];
 
-function check(line,name){
-let current=lead[line];
-let expected=bench[line];
+function line(name,key){
+let current=lead[key];
+let expected=bench[key];
 let diff=current-expected;
-let pct=(diff/expected)*100;
-
-if(diff>0){
- if(pct>25) findings.push(`🔴 ${name}: Significantly higher than expected (${Math.round(pct)}%). Likely pricing inefficiency or misclassification.`);
- else if(pct>10) findings.push(`🟠 ${name}: Moderately above benchmark (${Math.round(pct)}%). Review coverage structure and carrier.`);
+let pct=((diff/expected)*100)||0;
+rows.push({name,current,expected,diff,pct});
+if(diff>0){impacts.push({name,impact:diff});}
 }
 
-if(diff<0){
- if(Math.abs(pct)>20) findings.push(`⚠️ ${name}: Lower than expected. Possible underinsurance or missing endorsements.`);
-}
-}
+line('General Liability','gl');
+line('Workers Comp','wc');
+line('Commercial Auto','auto');
+line('Equipment','equip');
+line('Umbrella','umbrella');
 
-check('gl','General Liability');
-check('wc','Workers Compensation');
-check('auto','Commercial Auto');
-check('equip','Equipment');
-check('umbrella','Umbrella');
-
-return findings;
+impacts.sort((a,b)=>b.impact-a.impact);
+return {rows,impacts};
 }
 
 function submitLead(){
-if(chart1) chart1.destroy();
-if(chart2) chart2.destroy();
-
 let lead={
  business:business.value,
- email:email.value,
  trade:trade.value,
  revenue:parseNumber(revenue.value),
  gl:parseNumber(gl.value),
@@ -142,54 +114,75 @@ let lead={
  umbrella:parseNumber(umbrella.value)
 };
 
-lead.total=lead.gl+lead.wc+lead.auto+lead.equip+lead.umbrella;
 let bench=benchmark(lead.trade,lead.revenue);
-let benchTotal=Object.values(bench).reduce((a,b)=>a+b,0);
-
-let findings=analyzeLines(lead,bench);
-
-alertBox.innerHTML = `<div class="alert orange">Analysis complete. See key findings below.</div>`;
-
-insights.innerHTML = '<b>Key Findings & Recommendations:</b><br><br>' + findings.join('<br>');
-
-execSummary.innerHTML = `
-<b>Executive Summary:</b><br><br>
-We analyzed your insurance program against California contractor benchmarks.<br><br>
-<b>Total Cost:</b> ${fmt(lead.total)} vs Expected ${fmt(benchTotal)}<br><br>
-<b>Key Issues Identified:</b><br>${findings.join('<br>')}<br><br>
-<b>Next Step:</b> Contact Chris Gibson at 916-864-4983 or cgibson@addlins.com
-`;
-
-chart1 = new Chart(document.getElementById('premiumChart'),{
- type:'bar',
- data:{labels:['GL','WC','Auto','Equip','Umb'],datasets:[{label:'Current',data:[lead.gl,lead.wc,lead.auto,lead.equip,lead.umbrella]},{label:'Expected',data:Object.values(bench)}]}
-});
-
-chart2 = new Chart(document.getElementById('riskChart'),{
- type:'bar',
- data:{labels:['Total'],datasets:[{data:[lead.total,benchTotal]}]}
-});
+let analysis=analyze(lead,bench);
 
 comparisonTable.innerHTML=`
-<tr><th>Coverage</th><th>Current</th><th>Expected</th></tr>
-<tr><td>Total</td><td>${fmt(lead.total)}</td><td>${fmt(benchTotal)}</td></tr>`;
+<tr><th>Coverage</th><th>Current</th><th>Expected</th><th>Over/Under</th><th>%</th></tr>
+${analysis.rows.map(r=>`<tr><td>${r.name}</td><td>${fmt(r.current)}</td><td>${fmt(r.expected)}</td><td>${fmt(r.diff)}</td><td>${Math.round(r.pct)}%</td></tr>`).join('')}`;
 
-summary.innerText='See findings above for detailed recommendations.';
+let topIssues=analysis.impacts.slice(0,3).map(i=>`${i.name}: ${fmt(i.impact)} over expected`).join('\n');
+
+execSummary.innerHTML=`
+<b>Executive Summary</b><br><br>
+Your insurance program was benchmarked against similar California contractors based on revenue and trade.<br><br>
+Top Cost Drivers:\n${topIssues}<br><br>
+These inefficiencies increase your cost of doing business and may force you to overbid jobs.<br><br>
+Recommendation: Review WC classification, re-market carriers, and restructure liability program.<br><br>
+Contact: Chris Gibson | 916-864-4983 | cgibson@addlins.com`;
 
 report.style.display='block';
 leadCard.style.display='none';
 }
 
+function addHeaderFooter(doc,page){
+ doc.setFillColor(11,42,69);
+ doc.rect(0,0,210,12,'F');
+ doc.setTextColor(255,255,255);
+ doc.setFontSize(10);
+ doc.text('Albano Insurance Solutions',10,8);
+
+ doc.setTextColor(0,0,0);
+ doc.setFontSize(8);
+ doc.text('9197 Greenback Lane, Suite E, Orangevale CA 95662 | License #0442296',10,290);
+ doc.text('Page '+page,180,290);
+}
+
 function downloadPDF(){
 const {jsPDF}=window.jspdf;
 const doc=new jsPDF();
-let img1=chart1.toBase64Image();
-let text=doc.splitTextToSize(execSummary.innerText,180);
 
-doc.text('Insurance Risk Analysis Report',10,10);
-doc.addImage(img1,'PNG',10,20,180,60);
-doc.text(text,10,90);
-doc.save('Albano-Report.pdf');
+let margin=15;
+let width=180;
+
+addHeaderFooter(doc,1);
+
+doc.setFontSize(14);
+doc.text('Insurance Risk Analysis Report',margin,25);
+
+let execText=doc.splitTextToSize(execSummary.innerText,width);
+doc.setFontSize(10);
+doc.text(execText,margin,35);
+
+let y=80;
+doc.setFontSize(12);
+doc.text('Coverage Comparison',margin,y);
+y+=8;
+
+Array.from(comparisonTable.rows).forEach(row=>{
+ let rowText=Array.from(row.cells).map(c=>c.innerText).join(' | ');
+ doc.setFontSize(9);
+ doc.text(rowText,margin,y);
+ y+=6;
+});
+
+// page 2 if needed
+if(y>260){
+ doc.addPage();
+ addHeaderFooter(doc,2);
+}
+
+ doc.save('Albano-Executive-Report.pdf');
 }
 </script>
 
