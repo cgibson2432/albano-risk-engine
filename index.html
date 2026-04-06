@@ -8,7 +8,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 body{margin:0;font-family:'Inter',sans-serif;background:#f7f9fc;color:#0a0a0a;}
-.header{background:#0b2a45;color:#fff;padding:20px;font-size:22px;font-weight:700;}
+.header{background:#0b2a45;color:#fff;padding:20px;font-size:22px;font-weight:700;display:flex;align-items:center;gap:15px;}
+.logo{height:40px;}
 .container{max-width:1100px;margin:auto;padding:20px;}
 .card{background:#fff;padding:20px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.08);margin-bottom:20px;}
 input,select{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #ccc;}
@@ -24,7 +25,10 @@ button{background:#0b2a45;color:#fff;padding:14px;border:none;border-radius:8px;
 </head>
 <body>
 
-<div class="header">Albano Insurance Solutions | Insurance Risk Analysis Report</div>
+<div class="header">
+<img src="logo.png" class="logo">
+Albano Insurance Solutions | Insurance Risk Analysis Report
+</div>
 
 <div class="container">
 
@@ -91,13 +95,13 @@ function getHeatClass(pct){
 
 function submitLead(){
 let lead={
- trade:trade.value,
- revenue:parseNumber(revenue.value),
- gl:parseNumber(gl.value),
- wc:parseNumber(wc.value),
- auto:parseNumber(auto.value),
- equip:parseNumber(equip.value),
- umbrella:parseNumber(umbrella.value)
+ trade:document.getElementById('trade').value,
+ revenue:parseNumber(document.getElementById('revenue').value),
+ gl:parseNumber(document.getElementById('gl').value),
+ wc:parseNumber(document.getElementById('wc').value),
+ auto:parseNumber(document.getElementById('auto').value),
+ equip:parseNumber(document.getElementById('equip').value),
+ umbrella:parseNumber(document.getElementById('umbrella').value)
 };
 
 let bench=benchmark(lead.trade,lead.revenue);
@@ -131,88 +135,131 @@ rows.forEach(r=>{
  </tr>`;
 });
 
+let comparisonTable = document.getElementById('comparisonTable');
 comparisonTable.innerHTML=tableHTML;
+
 issues.sort((a,b)=>b.impact-a.impact);
+let top=issues.slice(0,3).map(i=>`${i.name}: ${fmt(i.impact)}`).join('\n');
 
-let top=issues.slice(0,3).map(i=>`${i.name}: ${fmt(i.impact)}`).join('<br>');
+let execSummary = document.getElementById('execSummary');
+execSummary.innerText=`Executive Summary\n\nTop Cost Drivers:\n${top}\n\nThese inefficiencies increase your cost and may impact your bids.\n\nCall Chris Gibson: 916-864-4983`;
 
-execSummary.innerHTML=`
-<b>Executive Summary</b><br><br>
-We analyzed your insurance program using California contractor benchmarks based on revenue, payroll ratios, and industry underwriting models.<br><br>
-<b>Top Cost Drivers:</b><br>${top}<br><br>
-Higher-than-expected premiums increase your cost structure and may force you to overbid jobs.<br><br>
-<b>Recommendation:</b> Re-market coverage, review WC classification, and align pricing with market benchmarks.<br><br>
-<b>Next Step:</b> Contact Chris Gibson | 916-864-4983 | cgibson@addlins.com
-`;
-
-methodology.innerHTML=`
-<b>How We Calculated This:</b><br>
-Benchmarks are derived from California contractor data including:
-<ul>
-<li>Revenue-to-premium ratios</li>
-<li>Estimated payroll percentages</li>
-<li>WCIRB rate assumptions per $100 payroll</li>
-<li>Carrier underwriting guidelines</li>
-</ul>`;
+let methodology = document.getElementById('methodology');
+methodology.innerText=`How We Calculated This:\nRevenue benchmarks, payroll ratios, WCIRB rates, underwriting models.`;
 
 report.style.display='block';
 leadCard.style.display='none';
 }
 
-function addHeader(doc,page){
- doc.setFillColor(11,42,69);
- doc.rect(0,0,210,15,'F');
- doc.setTextColor(255,255,255);
- doc.setFontSize(11);
- doc.text('Albano Insurance Solutions',10,10);
-}
-
-function addFooter(doc,page){
- doc.setTextColor(0);
- doc.setFontSize(8);
- doc.text('9197 Greenback Lane, Suite E, Orangevale CA 95662 | License #0442296',10,290);
- doc.text('Page '+page,180,290);
-}
-
 function downloadPDF(){
 const {jsPDF}=window.jspdf;
 const doc=new jsPDF();
+
+// add logo
+let img = new Image();
+img.src = 'logo.png';
+doc.addImage(img, 'PNG', 10, 5, 40, 15);
+
+let execText = document.getElementById('execSummary').innerText;
+let methodText = document.getElementById('methodology').innerText;
+let table = document.getElementById('comparisonTable');
+
 let y=25;
 
-addHeader(doc,1);
+// Title
+doc.setFontSize(14);
+doc.text('Insurance Risk Analysis Report',10,y);
+y+=10;
+
+// Executive Summary
+let splitExec = doc.splitTextToSize(execText,180);
+doc.setFontSize(10);
+doc.text(splitExec,10,y);
+y+=splitExec.length*5+5;
+
+// Methodology
+let splitMethod = doc.splitTextToSize(methodText,180);
+doc.text(splitMethod,10,y);
+y+=splitMethod.length*5+10;
+
+// Table Header Styling
+const colX = [10, 60, 100, 140, 170];
+const colHeaders = ['Coverage','Current','Expected','Variance','%'];
+
+doc.setFillColor(11,42,69);
+doc.setTextColor(255,255,255);
+doc.rect(10,y-5,190,8,'F');
+colHeaders.forEach((h,i)=>{
+ doc.text(h, colX[i], y);
+});
+
+y+=8;
+
+doc.setTextColor(0,0,0);
+
+// Table Rows with Heatmap
+Array.from(table.rows).slice(1).forEach(row=>{
+ if(y>270){ doc.addPage(); y=20; }
+
+ let cells = Array.from(row.cells);
+ let pct = parseFloat(cells[4].innerText.replace('%','')) || 0;
+
+ // Heatmap colors
+ if(pct > 25){ doc.setFillColor(253,234,234); }
+ else if(pct > 10){ doc.setFillColor(255,245,230); }
+ else{ doc.setFillColor(230,246,236); }
+
+ doc.rect(10,y-5,190,8,'F');
+
+ cells.forEach((cell,i)=>{
+  doc.text(cell.innerText, colX[i], y);
+ });
+
+ y+=8;
+});
+
+// Footer
+doc.setFontSize(8);
+doc.text('Albano Insurance Solutions | License #0442296',10,290);
+doc.text('Contact: Chris Gibson 916-864-4983',120,290);
+
+// Save
+doc.save('Albano-Executive-Report.pdf');
+}=window.jspdf;
+const doc=new jsPDF();
+
+// add logo
+let img = new Image();
+img.src = 'logo.png';
+doc.addImage(img, 'PNG', 10, 5, 40, 15);
+
+let execText = document.getElementById('execSummary').innerText;
+let methodText = document.getElementById('methodology').innerText;
+let table = document.getElementById('comparisonTable');
+
+let y=25;
 
 doc.setFontSize(14);
 doc.text('Insurance Risk Analysis Report',10,y);
 y+=10;
 
-let text=doc.splitTextToSize(execSummary.innerText,180);
+let splitExec = doc.splitTextToSize(execText,180);
 doc.setFontSize(10);
-doc.text(text,10,y);
-y+=text.length*5+5;
+doc.text(splitExec,10,y);
+y+=splitExec.length*5;
 
-let method=doc.splitTextToSize(methodology.innerText,180);
-doc.text(method,10,y);
-y+=method.length*5+5;
+let splitMethod = doc.splitTextToSize(methodText,180);
+doc.text(splitMethod,10,y);
+y+=splitMethod.length*5+10;
 
-// table header
- doc.setFontSize(11);
- doc.text('Coverage Comparison',10,y);
-y+=8;
+Array.from(table.rows).forEach(row=>{
+ let rowText = Array.from(row.cells).map(c=>c.innerText).join(' | ');
+ if(y>280){ doc.addPage(); y=20; }
+ doc.text(rowText,10,y);
+ y+=6;
+});
 
- doc.setFontSize(9);
- Array.from(comparisonTable.rows).forEach(row=>{
-  if(y>270){
-   doc.addPage();
-   addHeader(doc,2);
-   y=25;
-  }
-  let cols=Array.from(row.cells).map(c=>c.innerText);
-  doc.text(cols.join(' | '),10,y);
-  y+=6;
- });
-
-addFooter(doc,1);
-doc.save('Albano-Executive-Report.pdf');
+doc.save('Albano-Report.pdf');
 }
 </script>
 
