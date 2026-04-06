@@ -19,14 +19,14 @@ button{background:#0b2a45;color:#fff;padding:14px;border:none;border-radius:8px;
 .high{background:#fdeaea;}
 .mid{background:#fff5e6;}
 .low{background:#e6f6ec;}
-.exec{background:#eef4fb;padding:15px;border-radius:8px;margin-top:15px;line-height:1.5;}
-.method{font-size:12px;color:#444;margin-top:10px;}
+.exec{background:#eef4fb;padding:15px;border-radius:8px;margin-top:15px;line-height:1.5;white-space:pre-line;}
+.method{font-size:12px;color:#444;margin-top:10px;white-space:pre-line;}
 </style>
 </head>
 <body>
 
 <div class="header">
-<img src="logo.png" class="logo">
+<img src="logo.png" class="logo" onerror="this.style.display='none'">
 Albano Insurance Solutions | Insurance Risk Analysis Report
 </div>
 
@@ -94,6 +94,12 @@ function getHeatClass(pct){
 }
 
 function submitLead(){
+const leadCard = document.getElementById('leadCard');
+const report = document.getElementById('report');
+const comparisonTable = document.getElementById('comparisonTable');
+const execSummary = document.getElementById('execSummary');
+const methodology = document.getElementById('methodology');
+
 let lead={
  trade:document.getElementById('trade').value,
  revenue:parseNumber(document.getElementById('revenue').value),
@@ -121,7 +127,7 @@ rows.forEach(r=>{
  let current=lead[r.key];
  let expected=bench[r.key];
  let diff=current-expected;
- let pct=((diff/expected)*100)||0;
+ let pct= expected ? ((diff/expected)*100) : 0;
  let cls=getHeatClass(pct);
 
  if(diff>0) issues.push({name:r.name,impact:diff});
@@ -135,16 +141,13 @@ rows.forEach(r=>{
  </tr>`;
 });
 
-let comparisonTable = document.getElementById('comparisonTable');
 comparisonTable.innerHTML=tableHTML;
 
 issues.sort((a,b)=>b.impact-a.impact);
 let top=issues.slice(0,3).map(i=>`${i.name}: ${fmt(i.impact)}`).join('\n');
 
-let execSummary = document.getElementById('execSummary');
-execSummary.innerText=`Executive Summary\n\nTop Cost Drivers:\n${top}\n\nThese inefficiencies increase your cost and may impact your bids.\n\nCall Chris Gibson: 916-864-4983`;
+execSummary.innerText=`Executive Summary\n\nTop Cost Drivers:\n${top}\n\nThese inefficiencies increase your cost and may impact your bids.\n\nContact Chris Gibson: 916-864-4983`;
 
-let methodology = document.getElementById('methodology');
 methodology.innerText=`How We Calculated This:\nRevenue benchmarks, payroll ratios, WCIRB rates, underwriting models.`;
 
 report.style.display='block';
@@ -155,92 +158,39 @@ function downloadPDF(){
 const {jsPDF}=window.jspdf;
 const doc=new jsPDF();
 
-let y=25;
+const execText = document.getElementById('execSummary').innerText;
+const methodText = document.getElementById('methodology').innerText;
+const table = document.getElementById('comparisonTable');
 
-// --- Logo (ensure it renders reliably) ---
-const img = new Image();
-img.src = 'logo.png';
+let y=20;
 
-img.onload = function(){
+doc.setFontSize(14);
+doc.text('Insurance Risk Analysis Report',10,y);
+y+=10;
 
- doc.addImage(img, 'PNG', 10, 5, 40, 15);
+let splitExec = doc.splitTextToSize(execText,180);
+doc.setFontSize(10);
+doc.text(splitExec,10,y);
+y+=splitExec.length*5+5;
 
- let execText = document.getElementById('execSummary').innerText;
- let methodText = document.getElementById('methodology').innerText;
- let table = document.getElementById('comparisonTable');
+let splitMethod = doc.splitTextToSize(methodText,180);
+doc.text(splitMethod,10,y);
+y+=splitMethod.length*5+10;
 
- // Title
- doc.setFontSize(14);
- doc.text('Insurance Risk Analysis Report',10,y);
- y+=10;
+Array.from(table.rows).forEach(row=>{
+ if(y>270){ doc.addPage(); y=20; }
+ let rowText = Array.from(row.cells).map(c=>c.innerText).join(' | ');
+ doc.text(rowText,10,y);
+ y+=6;
+});
 
- // Executive Summary
- let splitExec = doc.splitTextToSize(execText,180);
- doc.setFontSize(10);
- doc.text(splitExec,10,y);
- y+=splitExec.length*5+5;
+doc.setFontSize(8);
+doc.text('Albano Insurance Solutions | License #0442296',10,290);
+doc.text('Chris Gibson | 916-864-4983 | cgibson@addlins.com',80,290);
 
- // Methodology
- let splitMethod = doc.splitTextToSize(methodText,180);
- doc.text(splitMethod,10,y);
- y+=splitMethod.length*5+10;
-
- // Table Header
- const colX = [10, 60, 100, 140, 170];
- const colHeaders = ['Coverage','Current','Expected','Variance','%'];
-
- doc.setFillColor(11,42,69);
- doc.setTextColor(255,255,255);
- doc.rect(10,y-5,190,8,'F');
- colHeaders.forEach((h,i)=> doc.text(h, colX[i], y));
- y+=8;
-
- doc.setTextColor(0,0,0);
-
- // Table Rows
- Array.from(table.rows).slice(1).forEach(row=>{
-  if(y>270){
-   addFooter(doc);
-   doc.addPage();
-   y=20;
-   addHeader(doc);
-  }
-
-  let cells = Array.from(row.cells);
-  let pct = parseFloat(cells[4].innerText.replace('%','')) || 0;
-
-  if(pct > 25){ doc.setFillColor(253,234,234); }
-  else if(pct > 10){ doc.setFillColor(255,245,230); }
-  else{ doc.setFillColor(230,246,236); }
-
-  doc.rect(10,y-5,190,8,'F');
-
-  cells.forEach((cell,i)=>{
-   doc.text(cell.innerText, colX[i], y);
-  });
-
-  y+=8;
- });
-
- // Footer
- addFooter(doc);
-
- doc.save('Albano-Executive-Report.pdf');
-};
+doc.save('Albano-Report.pdf');
 }
+</script>
 
-function addHeader(doc){
- doc.setFillColor(11,42,69);
- doc.rect(0,0,210,12,'F');
- doc.setTextColor(255,255,255);
- doc.setFontSize(10);
- doc.text('Albano Insurance Solutions',10,8);
- doc.setTextColor(0,0,0);
-}
-
-function addFooter(doc){
- doc.setFontSize(8);
- doc.setTextColor(0,0,0);
- doc.text('Albano Insurance Solutions | License #0442296',10,290);
- doc.text('Chris Gibson | 916-864-4983 | cgibson@addlins.com',80,290);
-}
+</body>
+</html>
