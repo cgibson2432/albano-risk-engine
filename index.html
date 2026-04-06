@@ -23,6 +23,7 @@ canvas{height:260px !important;}
 .orange{background:#fff5e6;color:#b26b00;}
 .green{background:#e6f6ec;color:#1f9d55;}
 .subtle{font-size:12px;color:#666;margin-top:6px;}
+.exec{background:#eef4fb;padding:15px;border-radius:8px;margin-top:15px;}
 </style>
 </head>
 <body>
@@ -60,12 +61,17 @@ canvas{height:260px !important;}
 <div class="card" id="report" style="display:none">
 <div id="alertBox"></div>
 <div id="renewalHint"></div>
+
+<div class="exec" id="execSummary"></div>
+
 <div class="grid">
 <canvas id="premiumChart"></canvas>
 <canvas id="riskChart"></canvas>
 </div>
+
 <table class="table" id="comparisonTable"></table>
 <p id="summary"></p>
+
 <button onclick="downloadPDF()">Download Full Report</button>
 </div>
 
@@ -76,6 +82,8 @@ Albano Insurance Solutions | 9197 Greenback Lane, Suite E, Orangevale CA 95662 |
 </div>
 
 <script>
+let chart1, chart2;
+
 function parseNumber(v){return parseFloat((v||'').replace(/,/g,''))||0}
 function fmt(n){return "$"+Math.round(n).toLocaleString()}
 
@@ -99,15 +107,13 @@ return{
 };
 }
 
-function renewalNudge(){
-return '<div class="alert orange">Most contractors review insurance 60–90 days before renewal. If you\'re inside that window, pricing and coverage gaps can be fixed now.</div>';
-}
-
 function submitLead(){
+if(chart1) chart1.destroy();
+if(chart2) chart2.destroy();
+
 let lead={
  business:business.value,
  email:email.value,
- cslb:cslb.value,
  trade:trade.value,
  revenue:parseNumber(revenue.value),
  gl:parseNumber(gl.value),
@@ -122,38 +128,38 @@ let bench=benchmark(lead.trade,lead.revenue);
 let benchTotal=Object.values(bench).reduce((a,b)=>a+b,0);
 
 let variance=((lead.total/benchTotal)-1)*100;
-let alertHTML='';
-if(variance>25) alertHTML='<div class="alert red">You are likely overpaying or misclassified. This directly impacts your ability to win jobs.</div>';
-else if(variance>10) alertHTML='<div class="alert orange">There are pricing inefficiencies that could be improved.</div>';
-else alertHTML='<div class="alert green">Your pricing is within expected range, but coverage gaps may still exist.</div>';
-alertBox.innerHTML=alertHTML;
 
-renewalHint.innerHTML = renewalNudge();
+alertBox.innerHTML = variance>20
+ ? '<div class="alert red">You are likely overpaying. This impacts your ability to win jobs.</div>'
+ : '<div class="alert orange">There may be optimization opportunities.</div>';
 
-new Chart(premiumChart,{type:'bar',data:{labels:['GL','WC','Auto','Equip','Umb'],datasets:[{label:'Current',data:[lead.gl,lead.wc,lead.auto,lead.equip,lead.umbrella]},{label:'Benchmark',data:Object.values(bench)}]}});
-
-new Chart(riskChart,{type:'bar',data:{labels:['Total Cost vs Industry Expected'],datasets:[{data:[lead.total,benchTotal]}]}});
-
-function row(n,a,b){let d=a-b;let p=((d/b)*100)||0;return `<tr><td>${n}</td><td>${fmt(a)}</td><td>${fmt(b)}</td><td>${fmt(d)}</td><td>${Math.round(p)}%</td></tr>`}
-
-comparisonTable.innerHTML=`
-<tr><th>Coverage</th><th>Current</th><th>Industry Expected</th><th>Over/Under ($)</th><th>%</th></tr>
-${row('General Liability',lead.gl,bench.gl)}
-${row('Workers Comp',lead.wc,bench.wc)}
-${row('Commercial Auto',lead.auto,bench.auto)}
-${row('Equipment',lead.equip,bench.equip)}
-${row('Umbrella',lead.umbrella,bench.umbrella)}
-${row('TOTAL',lead.total,benchTotal)}
+// EXEC SUMMARY
+execSummary.innerHTML = `
+<b>Executive Summary:</b><br><br>
+We analyzed your insurance program based on your reported revenue and trade classification. Using California contractor benchmarks (derived from payroll ratios, WCIRB rates, and typical premium-to-revenue ratios), we estimated what a similar business should be paying.<br><br>
+<b>Your Total Insurance Cost:</b> ${fmt(lead.total)}<br>
+<b>Industry Expected Cost:</b> ${fmt(benchTotal)}<br><br>
+<b>Impact:</b> Higher insurance costs can force you to overbid jobs, making you less competitive.<br><br>
+<b>Recommendation:</b> A structured review of your Workers Compensation classification, liability structure, and carrier placement is recommended.<br><br>
+<b>Next Step:</b> Contact Chris Gibson at 916-864-4983 or cgibson@addlins.com for a full strategy review.
 `;
 
-summary.innerText=`Total Cost of Insurance vs. Industry Expected\nYour Total: ${fmt(lead.total)}\nExpected: ${fmt(benchTotal)}\n\nRisk of having to overbid jobs: ${fmt(Math.max(0,lead.total-benchTotal))}`;
+chart1 = new Chart(document.getElementById('premiumChart'),{
+ type:'bar',
+ data:{labels:['GL','WC','Auto','Equip','Umb'],datasets:[{label:'Current',data:[lead.gl,lead.wc,lead.auto,lead.equip,lead.umbrella]},{label:'Industry Expected',data:Object.values(bench)}]}
+});
 
-// lightweight webhook (non-blocking)
-fetch("https://hook.us2.make.com/YOUR_WEBHOOK_URL",{
- method:"POST",
- headers:{"Content-Type":"application/json"},
- body:JSON.stringify(lead)
-}).catch(()=>{});
+chart2 = new Chart(document.getElementById('riskChart'),{
+ type:'bar',
+ data:{labels:['Total Cost vs Expected'],datasets:[{data:[lead.total,benchTotal]}]}
+});
+
+comparisonTable.innerHTML=`
+<tr><th>Coverage</th><th>Current</th><th>Expected</th></tr>
+<tr><td>Total</td><td>${fmt(lead.total)}</td><td>${fmt(benchTotal)}</td></tr>
+`;
+
+summary.innerText=`Difference: ${fmt(lead.total-benchTotal)}`;
 
 report.style.display='block';
 leadCard.style.display='none';
@@ -162,20 +168,23 @@ leadCard.style.display='none';
 function downloadPDF(){
 const {jsPDF}=window.jspdf;
 const doc=new jsPDF();
-let img1=premiumChart.toDataURL();
-let img2=riskChart.toDataURL();
 
-doc.text('Insurance Risk Analysis Report',10,10);
-doc.addImage(img1,'PNG',10,20,180,60);
+let img1 = chart1.toBase64Image();
+let img2 = chart2.toBase64Image();
 
-doc.addPage();
-doc.addImage(img2,'PNG',10,20,180,60);
-doc.text(summary.innerText,10,100);
+// PAGE 1
+ doc.text('Insurance Risk Analysis Report',10,10);
+ doc.addImage(img1,'PNG',10,20,180,60);
+ doc.text(execSummary.innerText || execSummary.innerHTML.replace(/<[^>]+>/g,''),10,90);
 
-doc.setFontSize(8);
-doc.text('Albano Insurance Solutions | CA License #0442296',10,290);
+// PAGE 2
+ doc.addPage();
+ doc.addImage(img2,'PNG',10,20,180,60);
+ doc.text(summary.innerText,10,100);
 
-doc.save('Albano-Report.pdf');
+ doc.text('Contact Chris Gibson | 916-864-4983 | cgibson@addlins.com',10,130);
+
+ doc.save('Albano-Executive-Report.pdf');
 }
 </script>
 
