@@ -16,11 +16,7 @@ input,select{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px s
 button{background:#0b2a45;color:#fff;padding:14px;border:none;border-radius:8px;cursor:pointer;width:100%;font-weight:700;}
 .table{width:100%;border-collapse:collapse;margin-top:10px;}
 .table td,.table th{border:1px solid #ddd;padding:10px;font-size:13px;text-align:left;}
-.high{background:#fdeaea;}
-.mid{background:#fff5e6;}
-.low{background:#e6f6ec;}
-.exec{background:#eef4fb;padding:15px;border-radius:8px;margin-top:15px;line-height:1.5;white-space:pre-line;}
-.method{font-size:12px;color:#444;margin-top:10px;white-space:pre-line;}
+.exec{background:#eef4fb;padding:15px;border-radius:8px;margin-top:15px;white-space:pre-line;}
 </style>
 </head>
 <body>
@@ -56,7 +52,7 @@ Albano Insurance Solutions | Insurance Risk Analysis Report
 
 <div class="card" id="report" style="display:none">
 <div id="execSummary" class="exec"></div>
-<div id="methodology" class="method"></div>
+<canvas id="barChart" width="400" height="150"></canvas>
 <table class="table" id="comparisonTable"></table>
 <button onclick="downloadPDF()">Download Executive Report</button>
 </div>
@@ -87,18 +83,10 @@ return{
 };
 }
 
-function getHeatClass(pct){
- if(pct > 25) return 'high';
- if(pct > 10) return 'mid';
- return 'low';
-}
-
 function submitLead(){
-const leadCard = document.getElementById('leadCard');
 const report = document.getElementById('report');
 const comparisonTable = document.getElementById('comparisonTable');
 const execSummary = document.getElementById('execSummary');
-const methodology = document.getElementById('methodology');
 
 let lead={
  trade:document.getElementById('trade').value,
@@ -112,83 +100,103 @@ let lead={
 
 let bench=benchmark(lead.trade,lead.revenue);
 
-let rows=[
- {name:'General Liability', key:'gl'},
- {name:'Workers Comp', key:'wc'},
- {name:'Commercial Auto', key:'auto'},
- {name:'Equipment', key:'equip'},
- {name:'Umbrella', key:'umbrella'}
-];
+let labels=['GL','WC','Auto','Equip','Umb'];
+let current=[lead.gl,lead.wc,lead.auto,lead.equip,lead.umbrella];
+let expected=[bench.gl,bench.wc,bench.auto,bench.equip,bench.umbrella];
 
-let tableHTML=`<tr><th>Coverage</th><th>Current</th><th>Expected</th><th>Variance</th><th>%</th></tr>`;
-let issues=[];
+// Draw bar chart
+let ctx=document.getElementById('barChart').getContext('2d');
+ctx.clearRect(0,0,400,150);
 
-rows.forEach(r=>{
- let current=lead[r.key];
- let expected=bench[r.key];
- let diff=current-expected;
- let pct= expected ? ((diff/expected)*100) : 0;
- let cls=getHeatClass(pct);
+for(let i=0;i<labels.length;i++){
+ let x=i*70+30;
+ let currHeight=current[i]/1000;
+ let expHeight=expected[i]/1000;
 
- if(diff>0) issues.push({name:r.name,impact:diff});
+ ctx.fillStyle='#0b2a45';
+ ctx.fillRect(x,140-currHeight,15,currHeight);
 
- tableHTML+=`<tr class="${cls}">
- <td>${r.name}</td>
- <td>${fmt(current)}</td>
- <td>${fmt(expected)}</td>
- <td>${fmt(diff)}</td>
- <td>${Math.round(pct)}%</td>
- </tr>`;
-});
+ ctx.fillStyle='#5dade2';
+ ctx.fillRect(x+20,140-expHeight,15,expHeight);
 
-comparisonTable.innerHTML=tableHTML;
+ ctx.fillStyle='#000';
+ ctx.fillText(labels[i],x,145);
+}
 
-issues.sort((a,b)=>b.impact-a.impact);
-let top=issues.slice(0,3).map(i=>`${i.name}: ${fmt(i.impact)}`).join('\n');
+let totalDiff=current.reduce((a,c,i)=>a+(c-expected[i]),0);
+let jobs=Math.max(lead.revenue/5000,1);
+let perJob=totalDiff/jobs;
 
-execSummary.innerText=`Executive Summary\n\nTop Cost Drivers:\n${top}\n\nThese inefficiencies increase your cost and may impact your bids.\n\nContact Chris Gibson: 916-864-4983`;
+execSummary.innerText=`EXECUTIVE SUMMARY
 
-methodology.innerText=`How We Calculated This:\nRevenue benchmarks, payroll ratios, WCIRB rates, underwriting models.`;
+Market Outlook:
+Insurance costs are rising across California contractors.
+
+Current Status:
+You are spending above benchmark in key areas.
+
+Estimated Overpayment:
+${fmt(totalDiff)} annually
+
+Per Job Impact:
+~${fmt(perJob)} added cost per job
+
+Opportunities:
+• Carrier re-market
+• WC optimization
+• Coverage alignment
+
+Carrier Strategy:
+Target markets: Liberty Mutual, AmTrust, Nationwide, UFG
+
+Call Chris Gibson
+916-864-4983`;
+
+comparisonTable.innerHTML=`<tr><th>Coverage</th><th>Current</th><th>Expected</th></tr>`+
+labels.map((l,i)=>`<tr><td>${l}</td><td>${fmt(current[i])}</td><td>${fmt(expected[i])}</td></tr>`).join('');
 
 report.style.display='block';
-leadCard.style.display='none';
 }
 
 function downloadPDF(){
 const {jsPDF}=window.jspdf;
 const doc=new jsPDF();
 
-const execText = document.getElementById('execSummary').innerText;
-const methodText = document.getElementById('methodology').innerText;
-const table = document.getElementById('comparisonTable');
+// Base64 logo placeholder (replace!)
+const logoBase64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB";
+doc.addImage(logoBase64,'PNG',10,5,40,15);
 
-let y=20;
-
+let y=25;
 doc.setFontSize(14);
 doc.text('Insurance Risk Analysis Report',10,y);
 y+=10;
 
-let splitExec = doc.splitTextToSize(execText,180);
-doc.setFontSize(10);
-doc.text(splitExec,10,y);
-y+=splitExec.length*5+5;
+let exec=document.getElementById('execSummary').innerText;
+let split=doc.splitTextToSize(exec,180);
+doc.text(split,10,y);
+y+=split.length*5+10;
 
-let splitMethod = doc.splitTextToSize(methodText,180);
-doc.text(splitMethod,10,y);
-y+=splitMethod.length*5+10;
+// Add chart image
+let chart=document.getElementById('barChart');
+let imgData=chart.toDataURL('image/png');
+doc.addImage(imgData,'PNG',10,y,180,60);
+y+=70;
 
-Array.from(table.rows).forEach(row=>{
- if(y>270){ doc.addPage(); y=20; }
- let rowText = Array.from(row.cells).map(c=>c.innerText).join(' | ');
- doc.text(rowText,10,y);
+// Table
+let table=document.getElementById('comparisonTable');
+Array.from(table.rows).forEach(r=>{
+ if(y>270){doc.addPage();y=20;}
+ let txt=Array.from(r.cells).map(c=>c.innerText).join(' | ');
+ doc.text(txt,10,y);
  y+=6;
 });
 
-doc.setFontSize(8);
-doc.text('Albano Insurance Solutions | License #0442296',10,290);
-doc.text('Chris Gibson | 916-864-4983 | cgibson@addlins.com',80,290);
+// Footer
+ doc.setFontSize(8);
+ doc.text('Albano Insurance Solutions | License #0442296',10,290);
+ doc.text('Chris Gibson | 916-864-4983 | cgibson@addlins.com',80,290);
 
-doc.save('Albano-Report.pdf');
+ doc.save('Albano-Executive-Report.pdf');
 }
 </script>
 
