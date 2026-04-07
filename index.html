@@ -162,6 +162,76 @@ function downloadPDF(){
 const {jsPDF}=window.jspdf;
 const doc=new jsPDF();
 
+// --- FIX 1: Ensure content exists before generating ---
+const execEl = document.getElementById('execSummary');
+const tableEl = document.getElementById('comparisonTable');
+const chartEl = document.getElementById('barChart');
+
+if(!execEl.innerText || tableEl.rows.length === 0){
+ alert('Please generate the report first');
+ return;
+}
+
+// --- FIX 2: Better logo handling (safe try/catch) ---
+try{
+ const logoBase64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB";
+ doc.addImage(logoBase64,'PNG',10,5,40,15);
+}catch(e){console.log('Logo failed to load');}
+
+let y=25;
+
+// Title
+ doc.setFontSize(16);
+ doc.text('Insurance Risk Analysis Report',10,y);
+ y+=10;
+
+// --- FIX 3: Executive Summary Box ---
+let exec = execEl.innerText;
+let split = doc.splitTextToSize(exec,180);
+
+ doc.setDrawColor(200);
+ doc.rect(10,y-5,190,split.length*5+10);
+ doc.setFontSize(10);
+ doc.text(split,12,y);
+ y+=split.length*5+15;
+
+// --- FIX 4: Chart Rendering Stability ---
+try{
+ let imgData = chartEl.toDataURL('image/png',1.0);
+ doc.addImage(imgData,'PNG',10,y,180,60);
+ y+=70;
+}catch(e){
+ console.log('Chart failed to render');
+}
+
+// --- FIX 5: Structured Table ---
+const colX=[10,70,120];
+
+ doc.setFillColor(11,42,69);
+ doc.setTextColor(255);
+ doc.rect(10,y-5,190,8,'F');
+ ['Coverage','Current','Expected'].forEach((h,i)=>doc.text(h,colX[i],y));
+ y+=8;
+ doc.setTextColor(0);
+
+Array.from(tableEl.rows).slice(1).forEach(r=>{
+ if(y>270){doc.addPage();y=20;}
+ let cells=Array.from(r.cells);
+ cells.forEach((c,i)=>{
+  doc.text(c.innerText,colX[i],y);
+ });
+ y+=7;
+});
+
+// --- FIX 6: Footer always prints ---
+ doc.setFontSize(8);
+ doc.text('Albano Insurance Solutions | License #0442296',10,290);
+ doc.text('Chris Gibson | 916-864-4983 | cgibson@addlins.com',70,290);
+
+ doc.save('Albano-Executive-Report.pdf');
+}=window.jspdf;
+const doc=new jsPDF();
+
 // Base64 logo placeholder (replace!)
 const logoBase64="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB";
 doc.addImage(logoBase64,'PNG',10,5,40,15);
