@@ -16,6 +16,9 @@ input,select{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px s
 button{background:#0b2a45;color:#fff;padding:14px;border:none;border-radius:8px;cursor:pointer;width:100%;font-weight:700;}
 .table{width:100%;border-collapse:collapse;margin-top:10px;}
 .table td,.table th{border:1px solid #ddd;padding:10px;font-size:13px;text-align:left;}
+.high{background:#fdeaea;}
+.mid{background:#fff5e6;}
+.low{background:#e6f6ec;}
 .exec{background:#eef4fb;padding:15px;border-radius:8px;margin-top:15px;white-space:pre-line;}
 </style>
 </head>
@@ -52,9 +55,8 @@ Albano Insurance Solutions | Insurance Risk Analysis Report
 
 <div class="card" id="report" style="display:none">
 <div id="execSummary" class="exec"></div>
-<canvas id="barChart" width="500" height="200"></canvas>
 <table class="table" id="comparisonTable"></table>
-<button onclick="downloadPDF()">Download Executive Report</button>
+<button onclick="downloadPDF()">Download Full Executive Report</button>
 </div>
 
 </div>
@@ -83,30 +85,13 @@ return{
 };
 }
 
-function drawChart(labels,current,expected){
-const canvas=document.getElementById('barChart');
-const ctx=canvas.getContext('2d');
-ctx.clearRect(0,0,canvas.width,canvas.height);
-
-const maxVal=Math.max(...current,...expected,1);
-const barWidth=20;
-const gap=40;
-
-labels.forEach((label,i)=>{
- let x=i*gap+40;
- let currHeight=(current[i]/maxVal)*120;
- let expHeight=(expected[i]/maxVal)*120;
-
- ctx.fillStyle='#0b2a45';
- ctx.fillRect(x,160-currHeight,barWidth,currHeight);
-
- ctx.fillStyle='#5dade2';
- ctx.fillRect(x+25,160-expHeight,barWidth,expHeight);
-
- ctx.fillStyle='#000';
- ctx.fillText(label,x,180);
-});
+function getHeat(pct){
+ if(pct>25)return 'high';
+ if(pct>10)return 'mid';
+ return 'low';
 }
+
+let lastAnalysis = null;
 
 function submitLead(){
 const report=document.getElementById('report');
@@ -125,21 +110,52 @@ let lead={
 
 let bench=benchmark(lead.trade,lead.revenue);
 
-let labels=['GL','WC','Auto','Equip','Umb'];
-let current=[lead.gl,lead.wc,lead.auto,lead.equip,lead.umbrella];
-let expected=[bench.gl,bench.wc,bench.auto,bench.equip,bench.umbrella];
+let rows=[
+ {name:'General Liability',key:'gl'},
+ {name:'Workers Comp',key:'wc'},
+ {name:'Commercial Auto',key:'auto'},
+ {name:'Equipment',key:'equip'},
+ {name:'Umbrella',key:'umbrella'}
+];
 
-// FIXED: proper chart scaling
-drawChart(labels,current,expected);
+let totalDiff=0;
+let insights=[];
 
-let totalDiff=current.reduce((a,c,i)=>a+(c-expected[i]),0);
-let jobs=Math.max(lead.revenue/5000,1);
-let perJob=totalDiff/jobs;
+let tableHTML=`<tr><th>Coverage</th><th>Current</th><th>Expected</th><th>Variance</th><th>%</th></tr>`;
 
-execSummary.innerText=`EXECUTIVE SUMMARY\n\nMarket Outlook:\nInsurance costs are rising across California contractors.\n\nCurrent Status:\nYou are spending above benchmark in key areas.\n\nEstimated Overpayment:\n${fmt(totalDiff)} annually\n\nPer Job Impact:\n~${fmt(perJob)} added cost per job\n\nOpportunities:\n• Carrier re-market\n• WC optimization\n• Coverage alignment\n\nCarrier Strategy:\nTarget markets: Liberty Mutual, AmTrust, Nationwide, UFG\n\nCall Chris Gibson\n916-864-4983`;
+rows.forEach(r=>{
+ let c=lead[r.key];
+ let e=bench[r.key];
+ let diff=c-e;
+ let pct=e?((diff/e)*100):0;
+ let cls=getHeat(pct);
 
-comparisonTable.innerHTML=`<tr><th>Coverage</th><th>Current</th><th>Expected</th></tr>`+
-labels.map((l,i)=>`<tr><td>${l}</td><td>${fmt(current[i])}</td><td>${fmt(expected[i])}</td></tr>`).join('');
+ let insight="";
+ if(diff>0){
+   totalDiff+=diff;
+   insight="Overpaying — market re-shop recommended";
+   insights.push({name:r.name,impact:diff});
+ } else {
+   insight="Pricing appears in line — review coverage for exclusions, endorsements, and limitations";
+ }
+
+ tableHTML+=`<tr class="${cls}">
+ <td>${r.name}</td>
+ <td>${fmt(c)}</td>
+ <td>${fmt(e)}</td>
+ <td>${fmt(diff)}</td>
+ <td>${Math.round(pct)}%</td>
+ </tr>`;
+});
+
+comparisonTable.innerHTML=tableHTML;
+
+// Sort priority by impact
+insights.sort((a,b)=>b.impact-a.impact);
+
+lastAnalysis = { totalDiff, insights };
+
+execSummary.innerText=`You may be overpaying approximately ${fmt(totalDiff)} per year based on California benchmarks.\n\nDownload the full report for detailed breakdown, risk exposure, and savings opportunities.`;
 
 report.style.display='block';
 }
@@ -148,80 +164,54 @@ function downloadPDF(){
 const {jsPDF}=window.jspdf;
 const doc=new jsPDF();
 
-const execEl=document.getElementById('execSummary');
 const tableEl=document.getElementById('comparisonTable');
-const chartEl=document.getElementById('barChart');
 
-if(!execEl.innerText || tableEl.rows.length===0){
+if(tableEl.rows.length===0 || !lastAnalysis){
  alert('Generate report first');
  return;
 }
 
-// --- NEW: Load logo properly ---
-const logo = new Image();
-logo.src = 'logo.png';
+let y=20;
 
-logo.onload = function(){
+// HEADLINE
+ doc.setFontSize(18);
+ doc.text(`Estimated Annual Overpayment: ${fmt(lastAnalysis.totalDiff)}`,10,y);
+ y+=12;
 
-// --- Header Bar ---
-doc.setFillColor(11,42,69);
-doc.rect(0,0,210,20,'F');
+// EXECUTIVE SUMMARY
+ doc.setFontSize(11);
+ let detailText="This report compares your insurance program to California contractor benchmarks using revenue-based modeling, payroll assumptions, and WCIRB rates. It identifies cost inefficiencies and structural risk.";
+ let split=doc.splitTextToSize(detailText,180);
+ doc.text(split,10,y);
+ y+=split.length*5+10;
 
-// Logo
-try{
- doc.addImage(logo,'PNG',10,4,40,12);
-}catch(e){console.log('Logo error',e);}
-
-// Header Title
- doc.setTextColor(255,255,255);
+// PRIORITY FIXES
  doc.setFontSize(12);
- doc.text('Insurance Risk Analysis Report',60,12);
- doc.setTextColor(0,0,0);
-
-let y=30;
-
-// Executive Summary Box
-let split=doc.splitTextToSize(execEl.innerText,180);
- doc.setDrawColor(200);
- doc.rect(10,y-5,190,split.length*5+10);
- doc.setFontSize(10);
- doc.text(split,12,y);
- y+=split.length*5+15;
-
-// Chart
-try{
- const imgData=chartEl.toDataURL('image/png');
- doc.addImage(imgData,'PNG',10,y,180,60);
- y+=70;
-}catch(e){console.log('Chart error',e);}
-
-// Table Header
-const colX=[10,70,120];
- doc.setFillColor(11,42,69);
- doc.setTextColor(255);
- doc.rect(10,y-5,190,8,'F');
- ['Coverage','Current','Expected'].forEach((h,i)=>doc.text(h,colX[i],y));
+ doc.text('Top Cost Reduction Priorities:',10,y);
  y+=8;
- doc.setTextColor(0);
+ doc.setFontSize(10);
+ lastAnalysis.insights.slice(0,3).forEach(i=>{
+  doc.text(`${i.name}: ${fmt(i.impact)} potential savings`,10,y);
+  y+=6;
+ });
+ y+=5;
 
-// Table Rows
-Array.from(tableEl.rows).slice(1).forEach(r=>{
+// TABLE
+ Array.from(tableEl.rows).forEach(r=>{
  if(y>270){doc.addPage();y=20;}
  let cells=Array.from(r.cells);
- cells.forEach((c,i)=>doc.text(c.innerText,colX[i],y));
+ let txt=cells.map(c=>c.innerText).join(' | ');
+ doc.text(txt,10,y);
  y+=7;
 });
 
-// Footer
+// FOOTER
  doc.setFontSize(8);
  doc.text('Albano Insurance Solutions | License #0442296',10,290);
  doc.text('Chris Gibson | 916-864-4983 | cgibson@addlins.com',70,290);
 
- doc.save('Albano-Executive-Report.pdf');
-
-};
+ doc.save('Albano-Full-Report.pdf');
 }
-
 </script>
 
 </body>
