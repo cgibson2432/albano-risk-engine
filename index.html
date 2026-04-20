@@ -201,6 +201,20 @@ let y=35;
  doc.setFontSize(12);
  doc.text('Top Cost Reduction Opportunities',10,y);
  y+=6;
+
+ // BENCHMARK EXPLANATION
+ doc.setFontSize(10);
+ let formulaText = "How Benchmarks Are Calculated:
+General Liability = Revenue x Industry Rate
+Workers Comp = (Payroll x WC Rate per $100)
+Payroll estimated as % of revenue based on trade
+Auto, Equipment, Umbrella = % of revenue based on CA contractor averages";
+ let fSplit = doc.splitTextToSize(formulaText,180);
+ doc.text(fSplit,10,y);
+ y+=fSplit.length*5+5;
+
+ doc.setFontSize(10);
+ y+=6;
  doc.setFontSize(10);
  lastAnalysis.insights.slice(0,3).forEach(i=>{
  doc.text(`• ${i.name}: ${fmt(i.impact)} potential savings`,12,y);
@@ -222,7 +236,7 @@ let y=35;
  y+=rowHeight;
  doc.setTextColor(0);
 
- // TABLE ROWS (WITH BORDERS + HEAT COLORS)
+ // TABLE ROWS (TRUE GRID TABLE)
  doc.setFontSize(9);
  Array.from(tableEl.rows).slice(1).forEach(r=>{
   if(y>270){doc.addPage();y=20;}
@@ -232,17 +246,29 @@ let y=35;
   let pct=parseFloat(pctText)||0;
 
   // Heat map coloring
-  if(pct>25){ doc.setFillColor(253,234,234);} // red
-  else if(pct>10){ doc.setFillColor(255,245,230);} // orange
-  else { doc.setFillColor(230,246,236);} // green
+  if(pct>25){ doc.setFillColor(253,234,234);} 
+  else if(pct>10){ doc.setFillColor(255,245,230);} 
+  else { doc.setFillColor(230,246,236);} 
 
+  // Row background
   doc.rect(10,y-6,190,rowHeight,'F');
 
-  cells.forEach((c,i)=>{
-    doc.text(c.innerText,colX[i],y);
+  // Vertical lines
+  [10,55,95,135,170,200].forEach(x=>{
+    doc.setDrawColor(220);
+    doc.line(x,y-6,x,y+2);
   });
 
+  // Cell text
+  cells.forEach((c,i)=>{
+    doc.text(c.innerText,colX[i]+2,y);
+  });
+
+  // Bottom border
+  doc.line(10,y+2,200,y+2);
+
   y+=rowHeight;
+ });
  });
 
 // FOOTER LINE
