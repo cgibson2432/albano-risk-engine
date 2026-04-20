@@ -94,6 +94,12 @@ function getHeat(pct){
 let lastAnalysis = null;
 
 function submitLead(){
+// --- INPUT VALIDATION ---
+const revenueInput = document.getElementById('revenue').value;
+if(!revenueInput){
+ alert('Please enter revenue');
+ return;
+}
 const report=document.getElementById('report');
 const comparisonTable=document.getElementById('comparisonTable');
 const execSummary=document.getElementById('execSummary');
@@ -161,7 +167,7 @@ report.style.display='block';
 }
 
 function downloadPDF(){
-const {jsPDF}=window.jspdf;
+const { jsPDF } = window.jspdf; // ensure correct UMD usage
 const doc=new jsPDF();
 
 const tableEl=document.getElementById('comparisonTable');
