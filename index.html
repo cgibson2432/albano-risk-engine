@@ -9,7 +9,7 @@
 <style>
 body{margin:0;font-family:'Inter',sans-serif;background:#f7f9fc;color:#0a0a0a;}
 .header{background:#0b2a45;color:#fff;padding:20px;font-size:22px;font-weight:700;display:flex;align-items:center;gap:15px;}
-.logo{height:40px;}
+.logo{height:45px;}
 .container{max-width:1100px;margin:auto;padding:20px;}
 .card{background:#fff;padding:20px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.08);margin-bottom:20px;}
 input,select{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #ccc;}
@@ -19,13 +19,13 @@ button{background:#0b2a45;color:#fff;padding:14px;border:none;border-radius:8px;
 .high{background:#fdeaea;}
 .mid{background:#fff5e6;}
 .low{background:#e6f6ec;}
-.exec{background:#eef4fb;padding:15px;border-radius:8px;margin-top:15px;white-space:pre-line;}
+.exec{background:#eef4fb;padding:15px;border-radius:8px;margin-top:15px;white-space:pre-line;font-size:15px;font-weight:500;}
 </style>
 </head>
 <body>
 
 <div class="header">
-<img src="logo.png" class="logo" onerror="this.style.display='none'">
+<img src="AlbanoInsurance_logo-fullcolor.png" class="logo" onerror="this.style.display='none'">
 Albano Insurance Solutions | Insurance Risk Analysis Report
 </div>
 
@@ -94,19 +94,16 @@ function getHeat(pct){
 let lastAnalysis = null;
 
 function submitLead(){
-// --- INPUT VALIDATION ---
 const revenueInput = document.getElementById('revenue').value;
-if(!revenueInput){
- alert('Please enter revenue');
- return;
-}
+if(!revenueInput){alert('Please enter revenue');return;}
+
 const report=document.getElementById('report');
 const comparisonTable=document.getElementById('comparisonTable');
 const execSummary=document.getElementById('execSummary');
 
 let lead={
  trade:document.getElementById('trade').value,
- revenue:parseNumber(document.getElementById('revenue').value),
+ revenue:parseNumber(revenueInput),
  gl:parseNumber(document.getElementById('gl').value),
  wc:parseNumber(document.getElementById('wc').value),
  auto:parseNumber(document.getElementById('auto').value),
@@ -136,13 +133,9 @@ rows.forEach(r=>{
  let pct=e?((diff/e)*100):0;
  let cls=getHeat(pct);
 
- let insight="";
  if(diff>0){
    totalDiff+=diff;
-   insight="Overpaying — market re-shop recommended";
    insights.push({name:r.name,impact:diff});
- } else {
-   insight="Pricing appears in line — review coverage for exclusions, endorsements, and limitations";
  }
 
  tableHTML+=`<tr class="${cls}">
@@ -155,29 +148,35 @@ rows.forEach(r=>{
 });
 
 comparisonTable.innerHTML=tableHTML;
-
-// Sort priority by impact
 insights.sort((a,b)=>b.impact-a.impact);
-
 lastAnalysis = { totalDiff, insights };
 
-execSummary.innerText=`You may be overpaying approximately ${fmt(totalDiff)} per year based on California benchmarks.\n\nDownload the full report for detailed breakdown, risk exposure, and savings opportunities.`;
-
+execSummary.innerText=`You may be overpaying approximately ${fmt(totalDiff)} annually. Download the full report for detailed analysis.`;
 report.style.display='block';
 }
 
 function downloadPDF(){
-const { jsPDF } = window.jspdf; // ensure correct UMD usage
+const { jsPDF } = window.jspdf;
 const doc=new jsPDF();
 
 const tableEl=document.getElementById('comparisonTable');
+if(tableEl.rows.length===0 || !lastAnalysis){alert('Generate report first');return;}
 
-if(tableEl.rows.length===0 || !lastAnalysis){
- alert('Generate report first');
- return;
-}
+const logo=new Image();
+logo.src='AlbanoInsurance_logo-fullcolor.png';
 
-let y=20;
+logo.onload=function(){
+
+// HEADER
+ doc.setFillColor(11,42,69);
+ doc.rect(0,0,210,20,'F');
+ doc.addImage(logo,'PNG',10,4,40,12);
+ doc.setTextColor(255);
+ doc.setFontSize(12);
+ doc.text('Insurance Risk Analysis Report',60,12);
+ doc.setTextColor(0);
+
+let y=30;
 
 // HEADLINE
  doc.setFontSize(18);
@@ -186,37 +185,38 @@ let y=20;
 
 // EXECUTIVE SUMMARY
  doc.setFontSize(11);
- let detailText="This report compares your insurance program to California contractor benchmarks using revenue-based modeling, payroll assumptions, and WCIRB rates. It identifies cost inefficiencies and structural risk.";
- let split=doc.splitTextToSize(detailText,180);
+ let detail="This report benchmarks your insurance program against California contractor norms using revenue, payroll ratios, and WCIRB rate assumptions. Variances highlight cost inefficiencies and potential coverage risk.";
+ let split=doc.splitTextToSize(detail,180);
  doc.text(split,10,y);
  y+=split.length*5+10;
 
-// PRIORITY FIXES
+// PRIORITIES
  doc.setFontSize(12);
- doc.text('Top Cost Reduction Priorities:',10,y);
+ doc.text('Top Savings Opportunities:',10,y);
  y+=8;
  doc.setFontSize(10);
  lastAnalysis.insights.slice(0,3).forEach(i=>{
-  doc.text(`${i.name}: ${fmt(i.impact)} potential savings`,10,y);
-  y+=6;
+ doc.text(`${i.name}: ${fmt(i.impact)} potential savings`,10,y);
+ y+=6;
  });
  y+=5;
 
-// TABLE
+// TABLE (CLEAN GRID STYLE)
+ doc.setFontSize(9);
  Array.from(tableEl.rows).forEach(r=>{
  if(y>270){doc.addPage();y=20;}
- let cells=Array.from(r.cells);
- let txt=cells.map(c=>c.innerText).join(' | ');
- doc.text(txt,10,y);
- y+=7;
-});
+ let row=Array.from(r.cells).map(c=>c.innerText);
+ doc.text(row.join(' | '),10,y);
+ y+=6;
+ });
 
 // FOOTER
  doc.setFontSize(8);
  doc.text('Albano Insurance Solutions | License #0442296',10,290);
  doc.text('Chris Gibson | 916-864-4983 | cgibson@addlins.com',70,290);
 
- doc.save('Albano-Full-Report.pdf');
+ doc.save('Albano-Executive-Report.pdf');
+};
 }
 </script>
 
