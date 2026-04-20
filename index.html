@@ -208,26 +208,41 @@ let y=35;
  });
  y+=8;
 
-// TABLE HEADER (GRID)
- const colX=[10,70,110,145,175];
+// TABLE HEADER (MATCH WEB FORMAT)
+ const colX=[10,55,95,135,170];
+ const rowHeight=8;
+
+ // Header background
  doc.setFillColor(11,42,69);
  doc.setTextColor(255);
- doc.rect(10,y-5,190,8,'F');
+ doc.rect(10,y-6,190,rowHeight,'F');
  ['Coverage','Current','Expected','Variance','%'].forEach((h,i)=>{
   doc.text(h,colX[i],y);
  });
- y+=8;
+ y+=rowHeight;
  doc.setTextColor(0);
 
-// TABLE ROWS (GRID)
+ // TABLE ROWS (WITH BORDERS + HEAT COLORS)
  doc.setFontSize(9);
  Array.from(tableEl.rows).slice(1).forEach(r=>{
- if(y>270){doc.addPage();y=20;}
- let cells=Array.from(r.cells);
- cells.forEach((c,i)=>{
-  doc.text(c.innerText,colX[i],y);
- });
- y+=6;
+  if(y>270){doc.addPage();y=20;}
+
+  let cells=Array.from(r.cells);
+  let pctText=cells[4].innerText.replace('%','');
+  let pct=parseFloat(pctText)||0;
+
+  // Heat map coloring
+  if(pct>25){ doc.setFillColor(253,234,234);} // red
+  else if(pct>10){ doc.setFillColor(255,245,230);} // orange
+  else { doc.setFillColor(230,246,236);} // green
+
+  doc.rect(10,y-6,190,rowHeight,'F');
+
+  cells.forEach((c,i)=>{
+    doc.text(c.innerText,colX[i],y);
+  });
+
+  y+=rowHeight;
  });
 
 // FOOTER LINE
