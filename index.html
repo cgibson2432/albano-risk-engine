@@ -280,6 +280,64 @@ Auto, Equipment, Umbrella = % of revenue based on CA contractor averages";
  doc.text('Albano Insurance Solutions | License #0442296',10,290);
  doc.text('Chris Gibson | 916-864-4983 | cgibson@addlins.com',90,290);
 
+ // --- PAGE 2: MARKET OUTLOOK ---
+ doc.addPage();
+ let y2=25;
+ doc.setFontSize(14);
+ doc.text('Market Outlook – California Contractors',10,y2);
+ y2+=8;
+ doc.setFontSize(10);
+ let outlook = "Insurance costs for California contractors continue to trend upward due to increased claim severity, litigation trends, and stricter underwriting standards. Workers Compensation rates are influenced by payroll classification accuracy and experience modification, while General Liability and Auto premiums are impacted by claims frequency and contract risk transfer requirements.";
+ let oSplit = doc.splitTextToSize(outlook,180);
+ doc.text(oSplit,10,y2);
+ y2+=oSplit.length*5+8;
+
+ doc.text('What This Means for Your Business:',10,y2);
+ y2+=6;
+ ['Higher insurance costs directly impact bid competitiveness','Carriers are reducing appetite for higher-risk contractors','Coverage terms are tightening (endorsements, exclusions)','Accurate classification and structuring is critical to control cost'].forEach(t=>{
+  doc.text('• '+t,12,y2);
+  y2+=5;
+ });
+
+// --- PAGE 3: RISK & COVERAGE NARRATIVE ---
+ doc.addPage();
+ let y3=25;
+ doc.setFontSize(14);
+ doc.text('Risk & Coverage Narrative',10,y3);
+ y3+=8;
+ doc.setFontSize(10);
+ let riskText = "Based on the variance analysis, certain lines of insurance may be overfunded while others may appear efficient but still require structural review. Lower-than-benchmark premiums can indicate restrictive endorsements, exclusions, or limitations that may expose your business during a claim.";
+ let rSplit = doc.splitTextToSize(riskText,180);
+ doc.text(rSplit,10,y3);
+ y3+=rSplit.length*5+8;
+
+ doc.text('Key Risk Considerations:',10,y3);
+ y3+=6;
+ ['Contractual liability gaps','Additional insured & waiver wording deficiencies','Subcontractor risk transfer issues','Auto fleet exposure & driver controls','Workers Comp classification accuracy'].forEach(t=>{
+  doc.text('• '+t,12,y3);
+  y3+=5;
+ });
+
+// --- PAGE 4: STRATEGIC RECOMMENDATIONS ---
+ doc.addPage();
+ let y4=25;
+ doc.setFontSize(14);
+ doc.text('Recommended Insurance Strategy',10,y4);
+ y4+=8;
+ doc.setFontSize(10);
+ let strat = "To improve cost efficiency and reduce risk exposure, your insurance program should be actively managed and remarketed based on carrier appetite, trade specialization, and loss profile. Strategic positioning of your account can materially impact both pricing and coverage quality.";
+ let sSplit = doc.splitTextToSize(strat,180);
+ doc.text(sSplit,10,y4);
+ y4+=sSplit.length*5+8;
+
+ doc.text('Recommended Actions:',10,y4);
+ y4+=6;
+ ['Re-market high variance lines to competitive carriers','Review endorsements, exclusions, and contract requirements','Optimize Workers Compensation classifications and payroll splits','Align coverage structure with project requirements','Implement annual insurance strategy review'].forEach(t=>{
+  doc.text('• '+t,12,y4);
+  y4+=5;
+ });
+
+// FINAL SAVE
  doc.save('Albano-Executive-Report.pdf');
 };
 }
