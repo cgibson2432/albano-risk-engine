@@ -25,7 +25,6 @@ button:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(0,0,0,.15);}
 </head>
 <body>
 <div class="header">
-<img src="AlbanoInsurance_logo-fullcolor.png" class="logo" onerror="this.style.display='none'">
 Albano Insurance Solutions | Insurance Risk Analysis Report
 </div>
 
@@ -60,6 +59,11 @@ Albano Insurance Solutions | Insurance Risk Analysis Report
 <div id="execSummary" class="exec"></div>
 <table class="table" id="comparisonTable"></table>
 <button onclick="downloadPDF()">Download Executive Summary</button>
+</div>
+
+<div style="text-align:center;margin-top:20px;">
+<img src="AlbanoInsurance_logo-fullcolor.png" style="height:50px;" onerror="this.style.display='none'">
+<div style="font-size:12px;color:#666;margin-top:5px;">CA License #0442296</div>
 </div>
 
 </div>
@@ -144,13 +148,64 @@ comparisonTable.innerHTML=html;
 insights.sort((a,b)=>b.impact-a.impact);
 lastAnalysis={totalDiff,insights,revenue};
 
-execSummary.innerText=`Estimated overpayment: ${fmt(totalDiff)}\n\nThis analysis uses California contractor benchmarks, payroll-based WCIRB modeling, and per-vehicle auto cost assumptions.`;
+execSummary.innerText=`Estimated Overpayment: ${fmt(totalDiff)}
+
+Market Insight: California contractor insurance costs are increasing due to claim severity, labor costs, and stricter underwriting.
+
+Key Findings:
+${insights.slice(0,3).map(i=>`• ${i.name}: ${fmt(i.impact)}`).join('
+')}
+
+Recommendation: Review your policies for pricing accuracy, endorsements, and exclusions.`;
 report.style.display='block';
 }
 
 function downloadPDF(){
 const { jsPDF } = window.jspdf;
 if(!lastAnalysis){alert('Run report first');return;}
+const doc=new jsPDF();
+
+ doc.setFillColor(11,42,69);
+ doc.rect(0,0,210,20,'F');
+ doc.setTextColor(255);
+ doc.setFontSize(12);
+ doc.text('Insurance Risk Analysis Summary',10,12);
+ doc.setTextColor(0);
+
+let y=30;
+ doc.setFontSize(16);
+ doc.text(`Estimated Overpayment: ${fmt(lastAnalysis.totalDiff)}`,10,y);
+ y+=10;
+
+ doc.setFontSize(10);
+ let txt="California contractor insurance costs are rising due to claims, labor costs, and stricter underwriting. This impacts your ability to bid competitively.";
+ let split=doc.splitTextToSize(txt,180);
+ doc.text(split,10,y);
+ y+=split.length*5+10;
+
+ doc.text('Top Opportunities:',10,y);
+ y+=6;
+ lastAnalysis.insights.slice(0,3).forEach(i=>{
+  doc.text(`• ${i.name}: ${fmt(i.impact)}`,10,y);
+  y+=5;
+ });
+
+ y+=10;
+ doc.setFontSize(11);
+ doc.text('Next Step:',10,y);
+ y+=6;
+ doc.setFontSize(10);
+ doc.text('Contact Chris Gibson | 916-864-4983 | cgibson@addlins.com',10,y);
+
+ const logo=new Image();
+ logo.src='AlbanoInsurance_logo-fullcolor.png';
+ logo.onload=function(){
+  doc.addImage(logo,'PNG',70,250,70,20);
+  doc.setFontSize(9);
+  doc.text('Albano Insurance Solutions | CA License #0442296',40,280);
+  doc.save('Insurance-Executive-Summary.pdf');
+ };
+}
 const doc=new jsPDF();
 
 // Header
