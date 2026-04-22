@@ -158,6 +158,65 @@ function downloadPDF(){
  if(!lastAnalysis){alert('Run report first');return;}
  const doc=new jsPDF();
 
+ // HEADER
+ doc.setFontSize(16);
+ doc.text(`Insurance Risk Analysis Summary`,10,15);
+
+ // OVERPAYMENT
+ doc.setFontSize(14);
+ doc.text(`Estimated Overpayment: ${fmt(lastAnalysis.totalDiff)}`,10,25);
+
+ // MARKET TEXT
+ doc.setFontSize(10);
+ doc.text('Market: CA insurance costs rising due to claims, labor costs, and underwriting tightening.',10,35);
+
+ // TABLE
+ let table = document.getElementById('comparisonTable');
+ let y = 50;
+
+ doc.setFontSize(10);
+
+ // HEADER ROW
+ let headers = ['Coverage','Current','Expected','Variance','%'];
+ let colX = [10,60,100,140,180];
+ headers.forEach((h,i)=>{
+  doc.text(h,colX[i],y);
+ });
+ y+=6;
+
+ // ROWS
+ Array.from(table.rows).slice(1).forEach(r=>{
+  let cells = r.cells;
+  doc.text(cells[0].innerText, colX[0], y);
+  doc.text(cells[1].innerText, colX[1], y);
+  doc.text(cells[2].innerText, colX[2], y);
+  doc.text(cells[3].innerText, colX[3], y);
+  doc.text(cells[4].innerText, colX[4], y);
+  y+=6;
+
+  if(y>260){doc.addPage(); y=20;}
+ });
+
+ // INSIGHTS
+ y+=5;
+ doc.text('Top Drivers:',10,y);
+ y+=6;
+ lastAnalysis.insights.slice(0,3).forEach(i=>{
+  doc.text(`• ${i.name}: ${fmt(i.impact)}`,10,y);
+  y+=6;
+ });
+
+ // CTA
+ y+=10;
+ doc.text('Contact Chris Gibson | 916-864-4983 | cgibson@addlins.com',10,y);
+ y+=6;
+ doc.text('CA License #0442296',10,y);
+
+ doc.save('Insurance-Summary.pdf');
+} = window.jspdf;
+ if(!lastAnalysis){alert('Run report first');return;}
+ const doc=new jsPDF();
+
  doc.setFontSize(16);
  doc.text(`Estimated Overpayment: ${fmt(lastAnalysis.totalDiff)}`,10,20);
 
