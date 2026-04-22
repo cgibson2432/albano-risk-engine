@@ -8,99 +8,22 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 body{margin:0;font-family:'Inter',sans-serif;background:#ffffff;color:#0a0a0a;}
-
-.header{
-  background:linear-gradient(90deg,#0b2a45,#1f6fb2);
-  color:#fff;
-  padding:22px;
-  font-size:22px;
-  font-weight:700;
-  display:flex;
-  align-items:center;
-  gap:15px;
-}
-
+.header{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:22px;font-size:22px;font-weight:700;display:flex;align-items:center;gap:15px;}
 .logo{height:45px;}
-
 .container{max-width:1100px;margin:auto;padding:30px 20px;}
-
-.card{
-  background:#ffffff;
-  padding:24px;
-  border-radius:14px;
-  border:1px solid #e6edf5;
-  box-shadow:0 10px 25px rgba(0,0,0,.05);
-  margin-bottom:20px;
-}
-
-input,select{
-  width:100%;
-  padding:12px;
-  margin:6px 0;
-  border-radius:8px;
-  border:1px solid #d6e0ea;
-  font-size:14px;
-  transition:.2s;
-}
-
-input:focus,select:focus{
-  border-color:#1f6fb2;
-  outline:none;
-  box-shadow:0 0 0 2px rgba(31,111,178,.15);
-}
-
-button{
-  background:linear-gradient(90deg,#0b2a45,#1f6fb2);
-  color:#fff;
-  padding:14px;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-  width:100%;
-  font-weight:700;
-  font-size:15px;
-  transition:.2s;
-}
-
-button:hover{
-  transform:translateY(-1px);
-  box-shadow:0 6px 14px rgba(0,0,0,.15);
-}
-
-.table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:15px;
-}
-
-.table td,.table th{
-  border:1px solid #e6edf5;
-  padding:10px;
-  font-size:13px;
-}
-
-.table th{
-  background:#0b2a45;
-  color:#fff;
-}
-
-.high{background:#fdeaea;}
-.mid{background:#fff5e6;}
-.low{background:#e6f6ec;}
-
-.exec{
-  background:#f3f7fc;
-  padding:18px;
-  border-radius:10px;
-  margin-top:15px;
-  font-size:15px;
-  border-left:4px solid #1f6fb2;
-  white-space:pre-line;
-}
+.card{background:#ffffff;padding:24px;border-radius:14px;border:1px solid #e6edf5;box-shadow:0 10px 25px rgba(0,0,0,.05);margin-bottom:20px;}
+input,select{width:100%;padding:12px;margin:6px 0;border-radius:8px;border:1px solid #d6e0ea;font-size:14px;transition:.2s;}
+input:focus,select:focus{border-color:#1f6fb2;outline:none;box-shadow:0 0 0 2px rgba(31,111,178,.15);} 
+button{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:14px;border:none;border-radius:8px;cursor:pointer;width:100%;font-weight:700;font-size:15px;transition:.2s;}
+button:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(0,0,0,.15);} 
+.table{width:100%;border-collapse:collapse;margin-top:15px;}
+.table td,.table th{border:1px solid #e6edf5;padding:10px;font-size:13px;}
+.table th{background:#0b2a45;color:#fff;}
+.high{background:#fdeaea;}.mid{background:#fff5e6;}.low{background:#e6f6ec;}
+.exec{background:#f3f7fc;padding:18px;border-radius:10px;margin-top:15px;font-size:15px;border-left:4px solid #1f6fb2;white-space:pre-line;}
 </style>
 </head>
 <body>
-
 <div class="header">
 <img src="AlbanoInsurance_logo-fullcolor.png" class="logo" onerror="this.style.display='none'">
 Albano Insurance Solutions | Insurance Risk Analysis Report
@@ -108,7 +31,7 @@ Albano Insurance Solutions | Insurance Risk Analysis Report
 
 <div class="container">
 
-<div class="card" id="leadCard">
+<div class="card">
 <input id="business" placeholder="Business Name">
 <input id="email" placeholder="Email">
 <select id="trade">
@@ -118,7 +41,10 @@ Albano Insurance Solutions | Insurance Risk Analysis Report
 <option>HVAC</option>
 <option>General Contractor</option>
 </select>
+
 <input id="revenue" placeholder="Annual Revenue ($)" oninput="formatCurrencyInput(this)">
+<input id="payroll" placeholder="Annual Payroll ($) (optional)" oninput="formatCurrencyInput(this)">
+<input id="autos" placeholder="# of Vehicles" >
 
 <h4>Current Insurance Premium Input</h4>
 <input id="gl" placeholder="General Liability ($)" oninput="formatCurrencyInput(this)">
@@ -133,7 +59,7 @@ Albano Insurance Solutions | Insurance Risk Analysis Report
 <div class="card" id="report" style="display:none">
 <div id="execSummary" class="exec"></div>
 <table class="table" id="comparisonTable"></table>
-<button onclick="downloadPDF()">Download Full Executive Report</button>
+<button onclick="downloadPDF()">Download Executive Summary</button>
 </div>
 
 </div>
@@ -141,42 +67,33 @@ Albano Insurance Solutions | Insurance Risk Analysis Report
 <script>
 function parseNumber(v){return parseFloat((v||'').replace(/,/g,''))||0}
 function fmt(n){return "$"+Math.round(n).toLocaleString('en-US')}
+function formatCurrencyInput(el){let raw=(el.value||'').replace(/[^0-9.]/g,'');if(!raw){el.value='';return;}let num=parseFloat(raw);if(isNaN(num)){el.value='';return;}el.value=Math.floor(num).toLocaleString('en-US');}
 
-function formatCurrencyInput(el){
-  let raw = (el.value||'').replace(/[^0-9.]/g,'');
-  if(raw===''){el.value='';return;}
-  let num=parseFloat(raw);
-  if(isNaN(num)){el.value='';return;}
-  el.value=Math.floor(num).toLocaleString('en-US');
-}
+// Benchmarks (CA-based assumptions)
+const AUTO_COST_PER_VEHICLE = 1800; // avg CA commercial auto
 
 const TRADE={
- Electrician:{gl:.005,auto:.018,inland:.008,umb:.002,payroll:.32,wc:4.5},
- Plumber:{gl:.006,auto:.02,inland:.01,umb:.0025,payroll:.35,wc:5.5},
- Painter:{gl:.0045,auto:.015,inland:.007,umb:.002,payroll:.30,wc:6},
- HVAC:{gl:.0055,auto:.02,inland:.009,umb:.0025,payroll:.34,wc:5},
- "General Contractor":{gl:.007,auto:.022,inland:.012,umb:.003,payroll:.38,wc:6.5}
+ Electrician:{gl:.005,inland:.008,umb:.002,payroll:.32,wc:4.5},
+ Plumber:{gl:.006,inland:.01,umb:.0025,payroll:.35,wc:5.5},
+ Painter:{gl:.0045,inland:.007,umb:.002,payroll:.30,wc:6},
+ HVAC:{gl:.0055,inland:.009,umb:.0025,payroll:.34,wc:5},
+ "General Contractor":{gl:.007,inland:.012,umb:.003,payroll:.38,wc:6.5}
 };
 
-function benchmark(trade,rev){
+function benchmark(trade,rev,payrollInput,autos){
 let t=TRADE[trade];
 if(!t)return {gl:0,wc:0,auto:0,equip:0,umbrella:0};
-let payroll=rev*t.payroll;
+let payroll = payrollInput || (rev*t.payroll);
 return{
  gl:rev*t.gl,
  wc:(payroll/100)*t.wc,
- auto:rev*t.auto,
+ auto:(autos||0)*AUTO_COST_PER_VEHICLE,
  equip:rev*t.inland,
  umbrella:rev*t.umb
 };
 }
 
-function getHeat(pct){
- if(pct>25)return 'high';
- if(pct>10)return 'mid';
- return 'low';
-}
-
+function getHeat(pct){if(pct>25)return 'high';if(pct>10)return 'mid';return 'low';}
 let lastAnalysis=null;
 
 function submitLead(){
@@ -184,7 +101,10 @@ let revenue=parseNumber(document.getElementById('revenue').value);
 if(!revenue){alert('Enter revenue');return;}
 
 let trade=document.getElementById('trade').value;
-let bench=benchmark(trade,revenue);
+let payroll=parseNumber(document.getElementById('payroll').value);
+let autos=parseNumber(document.getElementById('autos').value);
+
+let bench=benchmark(trade,revenue,payroll,autos);
 
 let lead={
  gl:parseNumber(document.getElementById('gl').value),
@@ -210,9 +130,7 @@ rows.forEach(r=>{
  let e=bench[r.key]||0;
  let diff=c-e;
  let pct=e?((diff/e)*100):0;
-
  if(diff>0){totalDiff+=diff;insights.push({name:r.name,impact:diff});}
-
  html+=`<tr class="${getHeat(pct)}">
  <td>${r.name}</td>
  <td>${fmt(c)}</td>
@@ -222,14 +140,54 @@ rows.forEach(r=>{
  </tr>`;
 });
 
-document.getElementById('comparisonTable').innerHTML=html;
+comparisonTable.innerHTML=html;
 insights.sort((a,b)=>b.impact-a.impact);
-lastAnalysis={totalDiff,insights};
+lastAnalysis={totalDiff,insights,revenue};
 
-document.getElementById('execSummary').innerText=`You may be overpaying approximately ${fmt(totalDiff)} annually.`;
-document.getElementById('report').style.display='block';
+execSummary.innerText=`Estimated overpayment: ${fmt(totalDiff)}\n\nThis analysis uses California contractor benchmarks, payroll-based WCIRB modeling, and per-vehicle auto cost assumptions.`;
+report.style.display='block';
+}
+
+function downloadPDF(){
+const { jsPDF } = window.jspdf;
+if(!lastAnalysis){alert('Run report first');return;}
+const doc=new jsPDF();
+
+// Header
+ doc.setFillColor(11,42,69);
+ doc.rect(0,0,210,20,'F');
+ doc.setTextColor(255);
+ doc.setFontSize(12);
+ doc.text('Insurance Risk Analysis Summary',10,12);
+ doc.setTextColor(0);
+
+let y=30;
+ doc.setFontSize(16);
+ doc.text(`Estimated Overpayment: ${fmt(lastAnalysis.totalDiff)}`,10,y);
+ y+=10;
+
+ doc.setFontSize(10);
+ let txt="Market Summary: California contractor insurance costs are rising due to claim severity, labor costs, and underwriting tightening. This impacts bid competitiveness and margins.";
+ let split=doc.splitTextToSize(txt,180);
+ doc.text(split,10,y);
+ y+=split.length*5+10;
+
+ doc.text('Top Opportunities:',10,y);
+ y+=6;
+ lastAnalysis.insights.slice(0,3).forEach(i=>{
+  doc.text(`• ${i.name}: ${fmt(i.impact)}`,10,y);
+  y+=5;
+ });
+
+ y+=10;
+ doc.setFontSize(11);
+ doc.text('Call to Action:',10,y);
+ y+=6;
+ doc.setFontSize(10);
+ doc.text('Contact Chris Gibson | 916-864-4983 | cgibson@addlins.com',10,y);
+
+ doc.save('Insurance-Executive-Summary.pdf');
 }
 </script>
-
 </body>
 </html>
