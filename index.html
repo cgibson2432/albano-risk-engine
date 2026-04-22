@@ -19,6 +19,7 @@ button{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:14px
 .high{background:#fdeaea}.mid{background:#fff5e6}.low{background:#e6f6ec}
 .exec{background:#f3f7fc;padding:18px;border-left:4px solid #1f6fb2;white-space:pre-line}
 .footer{text-align:center;margin-top:20px;font-size:12px;color:#666}
+.score{font-size:22px;font-weight:700;margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -43,13 +44,13 @@ button{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:14px
 <input id="gl" placeholder="General Liability" oninput="fmtInput(this)">
 <input id="wc" placeholder="Workers Comp" oninput="fmtInput(this)">
 <input id="auto" placeholder="Auto" oninput="fmtInput(this)">
-<input id="equip" placeholder="Equipment" oninput="fmtInput(this)">
 <input id="umbrella" placeholder="Umbrella" oninput="fmtInput(this)">
 
 <button onclick="runAnalysis()">Generate Report</button>
 </div>
 
 <div class="card" id="report" style="display:none">
+<div id="riskScore" class="score"></div>
 <div id="summary" class="exec"></div>
 <table id="table" class="table"></table>
 <button onclick="downloadPDF()">Download PDF</button>
@@ -67,9 +68,8 @@ function num(v){return parseFloat((v||'').replace(/,/g,''))||0}
 function money(n){return "$"+n.toLocaleString('en-US',{minimumFractionDigits:2})}
 function fmtInput(el){let n=num(el.value);el.value=n? n.toLocaleString():''}
 
-// MULTI-LAYER BENCHMARK ENGINE
 const DATA={
- base:{gl:.005,autoPerUnit:1800,equip:.008,umb:.002},
+ base:{gl:.005,autoPerUnit:1800,umb:.002},
  wcRates:{Electrician:4.5,Plumber:5.5,Painter:6,HVAC:5,"General Contractor":6.5},
  payrollPct:{Electrician:.32,Plumber:.35,Painter:.30,HVAC:.34,"General Contractor":.38}
 }
@@ -80,7 +80,6 @@ return{
  gl:rev*DATA.base.gl,
  wc:(p/100)*DATA.wcRates[trade],
  auto:(autos||0)*DATA.base.autoPerUnit,
- equip:rev*DATA.base.equip,
  umbrella:rev*DATA.base.umb
 }
 }
@@ -94,25 +93,30 @@ let rev=num(revenue.value); if(!rev) return alert('Enter revenue');
 let tradeSel=trade.value;
 let bench=benchmark(tradeSel,rev,num(payroll.value),num(autos.value));
 
-let cur={gl:num(gl.value),wc:num(wc.value),auto:num(auto.value),equip:num(equip.value),umbrella:num(umbrella.value)}
+let cur={gl:num(gl.value),wc:num(wc.value),auto:num(auto.value),umbrella:num(umbrella.value)}
 
-let rows=['gl','wc','auto','equip','umbrella']
-let names={gl:'GL',wc:'WC',auto:'Auto',equip:'Equipment',umbrella:'Umbrella'}
+let rows=['gl','wc','auto','umbrella']
+let names={gl:'General Liability',wc:'Workers Comp',auto:'Commercial Auto',umbrella:'Umbrella'}
 
 let html='<tr><th>Coverage</th><th>Current</th><th>Benchmark</th><th>Diff</th><th>%</th></tr>'
-let insights=[]; let total=0;
+let insights=[]; let total=0; let score=100;
 
 rows.forEach(k=>{
  let c=cur[k],e=bench[k],d=c-e,p=e?d/e*100:0
- if(d>0){total+=d;insights.push({k,impact:d})}
+ if(d>0){total+=d;insights.push({k,impact:d}); score-=Math.min(25,Math.abs(p))}
  html+=`<tr class="${heat(p)}"><td>${names[k]}</td><td>${money(c)}</td><td>${money(e)}</td><td>${money(d)}</td><td>${p.toFixed(1)}%</td></tr>`
 })
 
+score=Math.max(40,Math.round(score))
+
 table.innerHTML=html
 insights.sort((a,b)=>b.impact-a.impact)
-state={total,insights,tableHTML:html}
+state={total,insights,tableHTML:html,score}
 
-summary.innerText=`Estimated Overpayment: ${money(total)}\n\nThis uses blended benchmarks (WCIRB payroll modeling + per-vehicle auto + revenue ratios).\n\nTop Issues:\n${insights.slice(0,3).map(i=>`• ${i.k}: ${money(i.impact)}`).join('\n')}`
+riskScore.innerText=`Risk Score vs Peers: ${score}/100`
+
+summary.innerText=`Estimated Overpayment: ${money(total)}\n\nYour insurance program is compared against California contractor benchmarks using payroll-based WCIRB modeling and per-vehicle auto costs.\n\nTop Cost Drivers:\n${insights.slice(0,3).map(i=>`• ${names[i.k]}: ${money(i.impact)}`).join('\n')}`
+
 report.style.display='block'
 }
 
@@ -121,28 +125,38 @@ const { jsPDF } = window.jspdf
 if(!state) return alert('Run report first')
 const doc=new jsPDF()
 
-doc.setFontSize(14)
-doc.text('Insurance Risk Analysis',10,15)
-doc.text(`Overpayment: ${money(state.total)}`,10,25)
+let y=15
 
-doc.setFontSize(10)
-doc.text('Benchmark = blended underwriting model (WCIRB + market data)',10,35)
+doc.setFontSize(16)
+doc.text('Insurance Risk Analysis Summary',10,y)
+y+=10
 
-let y=45
+doc.setFontSize(12)
+doc.text(`Risk Score: ${state.score}/100`,10,y)
+y+=8
+
+doc.text(`Estimated Overpayment: ${money(state.total)}`,10,y)
+y+=10
+
+// TABLE
 let temp=document.createElement('div'); temp.innerHTML=state.tableHTML
-Array.from(temp.querySelectorAll('tr')).forEach((r,i)=>{
+Array.from(temp.querySelectorAll('tr')).forEach((r)=>{
  let cells=r.querySelectorAll('td,th')
  if(!cells.length) return
  let line=[...cells].map(c=>c.innerText).join(' | ')
+ doc.setFontSize(9)
  doc.text(line,10,y)
  y+=6
 })
 
-y+=5
-state.insights.slice(0,3).forEach(i=>{doc.text(`• ${i.k}: ${money(i.impact)}`,10,y);y+=6})
-
-doc.text('Call Chris Gibson | 916-864-4983 | cgibson@addlins.com',10,270)
-doc.text('CA License #0442296',10,280)
+// CTA
+y+=10
+doc.setFontSize(10)
+doc.text('Recommendation: Review pricing, endorsements, and carrier placement.',10,y)
+y+=8
+doc.text('Contact Chris Gibson | 916-864-4983 | cgibson@addlins.com',10,y)
+y+=6
+doc.text('CA License #0442296',10,y)
 
 doc.save('Insurance-Report.pdf')
 }
