@@ -21,6 +21,7 @@ button{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:14px
 .footer{text-align:center;margin-top:20px;font-size:12px;color:#666}
 .score{font-size:24px;font-weight:700;margin-bottom:10px}
 .impact{font-size:16px;font-weight:600;color:#b22222;margin-bottom:10px}
+.error{color:#b22222;font-size:13px;display:none}
 </style>
 </head>
 <body>
@@ -29,7 +30,8 @@ button{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:14px
 
 <div class="card">
 <input id="business" placeholder="Business Name">
-<input id="email" placeholder="Email">
+<input id="email" type="email" placeholder="Email (required)">
+<div id="emailError" class="error">Please enter a valid email.</div>
 <select id="trade">
 <option>Electrician</option>
 <option>Plumber</option>
@@ -69,6 +71,7 @@ CA License #0442296
 function num(v){return parseFloat((v||'').replace(/,/g,''))||0}
 function money(n){return "$"+n.toLocaleString('en-US',{minimumFractionDigits:2})}
 function fmtInput(el){let n=num(el.value);el.value=n? n.toLocaleString():''}
+function validEmail(e){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)}
 
 const DATA={
  base:{gl:.005,autoPerUnit:1800,umb:.002},
@@ -91,94 +94,106 @@ function heat(p){return p>25?'high':p>10?'mid':'low'}
 let state=null;
 
 function runAnalysis(){
-let rev=num(revenue.value); if(!rev) return alert('Enter revenue');
-let tradeSel=trade.value;
-let bench=benchmark(tradeSel,rev,num(payroll.value),num(autos.value));
+ const emailVal = document.getElementById('email').value.trim();
+ if(!validEmail(emailVal)){
+  document.getElementById('emailError').style.display='block';
+  return;
+ } else {
+  document.getElementById('emailError').style.display='none';
+ }
 
-let cur={gl:num(gl.value),wc:num(wc.value),auto:num(auto.value),umbrella:num(umbrella.value)}
+ let rev=num(revenue.value); if(!rev) return alert('Enter revenue');
+ let tradeSel=trade.value;
+ let bench=benchmark(tradeSel,rev,num(payroll.value),num(autos.value));
 
-let rows=['gl','wc','auto','umbrella']
-let names={gl:'General Liability',wc:'Workers Comp',auto:'Commercial Auto',umbrella:'Umbrella'}
+ let cur={gl:num(gl.value),wc:num(wc.value),auto:num(auto.value),umbrella:num(umbrella.value)}
 
-let html='<tr><th>Coverage</th><th>Current</th><th>Benchmark</th><th>Diff</th><th>%</th></tr>'
-let insights=[]; let total=0; let score=100;
+ let rows=['gl','wc','auto','umbrella']
+ let names={gl:'General Liability',wc:'Workers Comp',auto:'Commercial Auto',umbrella:'Umbrella'}
 
-rows.forEach(k=>{
- let c=cur[k],e=bench[k],d=c-e,p=e?d/e*100:0
- if(d>0){total+=d;insights.push({k,impact:d}); score-=Math.min(25,Math.abs(p))}
- html+=`<tr class="${heat(p)}"><td>${names[k]}</td><td>${money(c)}</td><td>${money(e)}</td><td>${money(d)}</td><td>${p.toFixed(1)}%</td></tr>`
-})
+ let html='<tr><th>Coverage</th><th>Current</th><th>Benchmark</th><th>Diff</th><th>%</th></tr>'
+ let insights=[]; let total=0; let score=100;
 
-score=Math.max(40,Math.round(score))
+ rows.forEach(k=>{
+  let c=cur[k],e=bench[k],d=c-e,p=e?d/e*100:0
+  if(d>0){total+=d;insights.push({k,impact:d}); score-=Math.min(25,Math.abs(p))}
+  html+=`<tr class="${heat(p)}"><td>${names[k]}</td><td>${money(c)}</td><td>${money(e)}</td><td>${money(d)}</td><td>${p.toFixed(1)}%</td></tr>`
+ })
 
-// JOB COST IMPACT ESTIMATE
-let jobs = Math.max(1, Math.round(rev / 50000))
-let costPerJob = total / jobs
+ score=Math.max(40,Math.round(score))
 
-// STORE
-insights.sort((a,b)=>b.impact-a.impact)
-state={total,insights,tableHTML:html,score,costPerJob}
+ let jobs = Math.max(1, Math.round(rev / 50000))
+ let costPerJob = total / jobs
 
-// RENDER
-riskScore.innerText=`Risk Score vs Peers: ${score}/100`
-jobImpact.innerText=`Estimated Overbidding Impact: ${money(costPerJob)} per job`
+ insights.sort((a,b)=>b.impact-a.impact)
+ state={total,insights,tableHTML:html,score,costPerJob,names}
 
-summary.innerText=`Estimated Overpayment: ${money(total)}\n\nThis analysis uses California contractor benchmarks (WCIRB payroll modeling + per vehicle auto).\n\nTop Cost Drivers:\n${insights.slice(0,3).map(i=>`• ${names[i.k]}: ${money(i.impact)}`).join('\n')}\n\nIf unchanged, this may force higher bid pricing and reduce competitiveness.`
+ riskScore.innerText=`Risk Score vs Peers: ${score}/100`
+ jobImpact.innerText=`Estimated Overbidding Impact: ${money(costPerJob)} per job`
 
-table.innerHTML=html
-report.style.display='block'
+ summary.innerText=`Estimated Overpayment: ${money(total)}\n\nTop Cost Drivers:\n${insights.slice(0,3).map(i=>`• ${names[i.k]}: ${money(i.impact)}`).join('\n')}\n\nRecommended Review Areas:\n${insights.slice(0,3).map(i=>`• ${names[i.k]} pricing + coverage structure`).join('\n')}`
+
+ table.innerHTML=html
+ report.style.display='block'
 }
 
 function downloadPDF(){
-const { jsPDF } = window.jspdf
-if(!state) return alert('Run report first')
-const doc=new jsPDF()
+ const { jsPDF } = window.jspdf
+ if(!state) return alert('Run report first')
+ const doc=new jsPDF()
 
-let y=15
+ let y=15
+ doc.setFontSize(16)
+ doc.text('Insurance Risk Analysis Report',10,y)
+ y+=10
 
-doc.setFontSize(16)
-doc.text('Insurance Risk Analysis Summary',10,y)
-y+=10
+ doc.setFontSize(12)
+ doc.text(`Risk Score: ${state.score}/100`,10,y); y+=8
+ doc.text(`Overpayment: ${money(state.total)}`,10,y); y+=8
+ doc.text(`Overbid Impact: ${money(state.costPerJob)} per job`,10,y); y+=10
 
-doc.setFontSize(12)
-doc.text(`Risk Score: ${state.score}/100`,10,y)
-y+=8
+ // Findings
+ doc.setFontSize(12)
+ doc.text('Key Findings:',10,y); y+=6
+ doc.setFontSize(10)
+ state.insights.slice(0,3).forEach(i=>{doc.text(`• ${state.names[i.k]}: ${money(i.impact)}`,10,y); y+=5})
+ y+=5
 
-doc.text(`Overpayment: ${money(state.total)}`,10,y)
-y+=8
-
-doc.text(`Overbid Impact: ${money(state.costPerJob)} per job`,10,y)
-y+=10
-
-// TABLE GRID
-let startX=10
-let col=[10,60,100,140,180]
-let headers=['Coverage','Current','Benchmark','Diff','%']
-headers.forEach((h,i)=>doc.text(h,col[i],y))
-y+=6
-
-let temp=document.createElement('div'); temp.innerHTML=state.tableHTML
-Array.from(temp.querySelectorAll('tr')).slice(1).forEach(r=>{
- let cells=r.querySelectorAll('td')
- doc.setFontSize(9)
- doc.text(cells[0].innerText,col[0],y)
- doc.text(cells[1].innerText,col[1],y)
- doc.text(cells[2].innerText,col[2],y)
- doc.text(cells[3].innerText,col[3],y)
- doc.text(cells[4].innerText,col[4],y)
+ // Table
+ doc.setFontSize(11)
+ doc.text('Line-by-Line Comparison:',10,y); y+=6
+ let col=[10,60,100,140,180]
+ let headers=['Coverage','Current','Benchmark','Diff','%']
+ headers.forEach((h,i)=>doc.text(h,col[i],y))
  y+=6
-})
 
-// CTA
-y+=10
-doc.setFontSize(10)
-doc.text('Recommendation: Review pricing, endorsements, and carrier placement.',10,y)
-y+=8
-doc.text('Contact Chris Gibson | 916-864-4983 | cgibson@addlins.com',10,y)
-y+=6
-doc.text('CA License #0442296',10,y)
+ let temp=document.createElement('div'); temp.innerHTML=state.tableHTML
+ Array.from(temp.querySelectorAll('tr')).slice(1).forEach(r=>{
+  let c=r.querySelectorAll('td')
+  doc.setFontSize(9)
+  doc.text(c[0].innerText,col[0],y)
+  doc.text(c[1].innerText,col[1],y)
+  doc.text(c[2].innerText,col[2],y)
+  doc.text(c[3].innerText,col[3],y)
+  doc.text(c[4].innerText,col[4],y)
+  y+=6
+ })
 
-doc.save('Insurance-Report.pdf')
+ // Recommendations
+ y+=10
+ doc.setFontSize(12)
+ doc.text('Recommendations:',10,y); y+=6
+ doc.setFontSize(10)
+ state.insights.slice(0,3).forEach(i=>{
+  doc.text(`• Review ${state.names[i.k]} for pricing accuracy and endorsements`,10,y); y+=5
+ })
+
+ y+=8
+ doc.text('Contact Chris Gibson | 916-864-4983 | cgibson@addlins.com',10,y)
+ y+=5
+ doc.text('CA License #0442296',10,y)
+
+ doc.save('Insurance-Risk-Report.pdf')
 }
 </script>
 </body>
