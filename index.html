@@ -143,6 +143,101 @@ function downloadPDF(){
  const doc=new jsPDF()
 
  let y=15
+
+ // HEADER BAR
+ doc.setFillColor(11,42,69)
+ doc.rect(0,0,210,20,'F')
+ doc.setTextColor(255)
+ doc.setFontSize(14)
+ doc.text('Insurance Risk Analysis Report',10,12)
+
+ // LOGO (if available)
+ try{
+  doc.addImage('AlbanoInsurance_logo-fullcolor.png','PNG',150,2,40,15)
+ }catch(e){}
+
+ doc.setTextColor(0)
+ y=30
+
+ // CORE METRICS
+ doc.setFontSize(13)
+ doc.text(`Risk Score: ${state.score}/100`,10,y); y+=8
+ doc.text(`Estimated Overpayment: ${money(state.total)}`,10,y); y+=8
+ doc.text(`Overbidding Impact: ${money(state.costPerJob)} per job`,10,y); y+=12
+
+ // SECTION: FINDINGS
+ doc.setFontSize(12)
+ doc.text('Key Findings',10,y); y+=6
+ doc.setDrawColor(200)
+ doc.line(10,y,200,y); y+=6
+
+ doc.setFontSize(10)
+ state.insights.slice(0,3).forEach(i=>{
+  doc.text(`• ${state.names[i.k]}: ${money(i.impact)}`,12,y)
+  y+=5
+ })
+
+ y+=5
+
+ // SECTION: TABLE
+ doc.setFontSize(12)
+ doc.text('Coverage Comparison',10,y); y+=6
+ doc.line(10,y,200,y); y+=6
+
+ let col=[10,60,100,140,180]
+ let headers=['Coverage','Current','Benchmark','Diff','%']
+
+ doc.setFontSize(10)
+ headers.forEach((h,i)=>doc.text(h,col[i],y))
+ y+=6
+
+ doc.setDrawColor(220)
+ doc.line(10,y-4,200,y-4)
+
+ let temp=document.createElement('div'); temp.innerHTML=state.tableHTML
+ Array.from(temp.querySelectorAll('tr')).slice(1).forEach(r=>{
+  let c=r.querySelectorAll('td')
+  if(y>260){doc.addPage(); y=20}
+
+  doc.text(c[0].innerText,col[0],y)
+  doc.text(c[1].innerText,col[1],y)
+  doc.text(c[2].innerText,col[2],y)
+  doc.text(c[3].innerText,col[3],y)
+  doc.text(c[4].innerText,col[4],y)
+
+  doc.line(10,y+2,200,y+2)
+  y+=6
+ })
+
+ y+=10
+
+ // SECTION: RECOMMENDATIONS
+ doc.setFontSize(12)
+ doc.text('Recommendations',10,y); y+=6
+ doc.line(10,y,200,y); y+=6
+
+ doc.setFontSize(10)
+ state.insights.slice(0,3).forEach(i=>{
+  doc.text(`• Review ${state.names[i.k]} pricing, structure, and endorsements`,12,y)
+  y+=5
+ })
+
+ y+=10
+
+ // CTA
+ doc.setFontSize(11)
+ doc.text('Next Step:',10,y); y+=6
+ doc.setFontSize(10)
+ doc.text('Contact Chris Gibson | 916-864-4983',10,y); y+=5
+ doc.text('cgibson@addlins.com',10,y); y+=5
+ doc.text('CA License #0442296',10,y)
+
+ doc.save('Insurance-Risk-Report.pdf')
+} = window.jspdf
+ if(!state) return alert('Run report first')
+ const doc=new jsPDF()
+
+ let y=15
  doc.setFontSize(16)
  doc.text('Insurance Risk Analysis Report',10,y)
  y+=10
