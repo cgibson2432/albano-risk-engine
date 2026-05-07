@@ -106,7 +106,8 @@ function fmtInput(el){
     ? `${whole}.${decimal.slice(0,2)}`
     : whole
 
-  el.setSelectionRange(cursorPosition, cursorPosition)
+  sition, cursorPosition)
+  },0)
 }
 function validEmail(e){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)}
 
@@ -258,8 +259,7 @@ This analysis compares your insurance structure against California contractor pe
 
 Top Cost Drivers:
 
-${insights.slice(0,3).map(i => `• ${names[i.k]}: ${money(i.impact)}`).join('
-')}
+${insights.slice(0,3).map(i => `• ${names[i.k]}: ${money(i.impact)}`).join('\\n')}
 
 Recommended Action:
 
@@ -383,55 +383,6 @@ async function downloadPDF(){
  // ===== VISUAL REPORT SECTION =====
  const reportNode = document.getElementById('report')
  const downloadBtn = reportNode.querySelector('button')
- if(downloadBtn) downloadBtn.style.display='none'
-
- setTimeout(async () => {
-
- try {
-
- const canvas = await html2canvas(reportNode,{
-   scale:1.4,
-   backgroundColor:'#ffffff',
-   useCORS:true,
-   logging:false,
-   scrollY:-window.scrollY
- }).then(canvas=>{
-
-   const img = canvas.toDataURL('image/png')
-
-   // SINGLE PAGE VISUAL REPORT - PROPERLY SCALED
- const maxWidth = 120
- const maxHeight = 120
-
- const ratio = Math.min(maxWidth / canvas.width, maxHeight / canvas.height)
- const imgWidth = canvas.width * ratio
- const imgHeight = canvas.height * ratio
-
- const xPos = 162
- const yPos = 48
-
- doc.addImage(img,'PNG',xPos,yPos,imgWidth,imgHeight)
-
-   // ===== FOOTER =====
-   doc.setFontSize(9)
-   doc.setTextColor(120)
-   doc.line(12,198,285,198)
-   doc.text('Albano Insurance Solutions | CA License #0442296',12,204)
-   doc.text('Chris Gibson | 916-864-4983 | cgibson@addlins.com',175,204)
-
-   if(downloadBtn) downloadBtn.style.display='block'
-   doc.save('Insurance-Risk-Analysis-Executive-Summary.pdf')
-  })
-
- } catch(err){
-   console.error(err)
-   alert('PDF generation failed.')
- }
-
-},300)
- })
-  }
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+ if(downloadBtn) downanvas/1.4.1/html2canvas.min.js"></script>
 </body>
 </html>
