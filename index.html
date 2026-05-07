@@ -53,7 +53,7 @@ button{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:14px
 <button onclick="runAnalysis()">Generate Report</button>
 </div>
 
-<div class="card" id="report" style="display:none">
+<div class="card" id="report" style="display:none;background:#ffffff;padding:20px;border:1px solid #dfe7f1">
 <div class="gauge-wrap">
 <canvas id="gauge" width="120" height="120"></canvas>
 <div>
@@ -149,7 +149,18 @@ function runAnalysis(){
  riskScore.innerText=`Risk Score vs Peers: ${score}/100`
  jobImpact.innerText=`Estimated Overbidding Impact: ${money(costPerJob)} per job`
 
- summary.innerText=`Estimated Overpayment: ${money(total)}\n\nTop Cost Drivers:\n${insights.slice(0,3).map(i=>`• ${names[i.k]}: ${money(i.impact)}`).join('\n')}`
+ summary.innerText=`Estimated Overpayment: ${money(total)}
+
+Industry Benchmark Findings:
+This analysis compares your insurance structure against California contractor peer benchmarks using WCIRB payroll modeling, trade-specific liability assumptions, and commercial auto fleet trends.
+
+Top Cost Drivers:
+${insights.slice(0,3).map(i=>`• ${names[i.k]}: ${money(i.impact)}`).join('\n')}
+
+Recommended Action:
+Review pricing, endorsements, exclusions, subcontractor limitations, and carrier fit to improve competitiveness and reduce insurance leakage.
+
+Contact Chris Gibson at 916-864-4983 or cgibson@addlins.com for a full insurance review.`
 
  table.innerHTML=html
  report.style.display='block'
@@ -246,9 +257,16 @@ function downloadPDF(){
  doc.text('916-864-4983 | cgibson@addlins.com',18,185)
 
  // ===== VISUAL REPORT SECTION =====
- html2canvas(document.getElementById('report'),{
+ const reportNode = document.getElementById('report')
+ const downloadBtn = reportNode.querySelector('button')
+ if(downloadBtn) downloadBtn.style.display='none'
+
+ html2canvas(reportNode,{
    scale:2,
-   backgroundColor:'#ffffff'
+   backgroundColor:'#ffffff',
+   useCORS:true,
+   logging:false,
+   scrollY:-window.scrollY
  }).then(canvas=>{
 
    const img = canvas.toDataURL('image/png')
@@ -263,6 +281,7 @@ function downloadPDF(){
    doc.text('Albano Insurance Solutions | CA License #0442296',12,204)
    doc.text('Insurance Risk Analysis Executive Summary',205,204)
 
+   if(downloadBtn) downloadBtn.style.display='block'
    doc.save('Insurance-Risk-Analysis-Executive-Summary.pdf')
  })
 }
