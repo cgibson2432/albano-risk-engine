@@ -175,13 +175,19 @@ function downloadPDF(){
  const pageWidth = 297
  const pageHeight = 210
 
- // ===== HEADER =====
- doc.setFillColor(11,42,69)
- doc.rect(0,0,pageWidth,24,'F')
+ // ===== SPLIT HEADER =====
+ // LEFT SIDE WHITE FOR LOGO
+ doc.setFillColor(255,255,255)
+ doc.rect(0,0,145,24,'F')
 
+ // RIGHT SIDE BLUE FOR TITLE
+ doc.setFillColor(11,42,69)
+ doc.rect(145,0,152,24,'F')
+
+ // HEADER TITLE
  doc.setTextColor(255)
- doc.setFontSize(20)
- doc.text('Insurance Risk Analysis Executive Summary',12,15)
+ doc.setFontSize(18)
+ doc.text('Insurance Risk Analysis Executive Summary',155,15)
 
  // ===== LOGO =====
  const logo = document.querySelector('.footer img')
@@ -193,7 +199,7 @@ function downloadPDF(){
      const ctx = canvas.getContext('2d')
      ctx.drawImage(logo,0,0)
      const logoData = canvas.toDataURL('image/png')
-     doc.addImage(logoData,'PNG',235,4,50,16)
+     doc.addImage(logoData,'PNG',12,4,70,16)
    }catch(e){console.log(e)}
  }
 
@@ -208,7 +214,8 @@ function downloadPDF(){
  doc.text(`Trade: ${tradeVal}`,12,42)
  doc.text(`Risk Score: ${state.score}/100`,12,49)
  doc.text(`Estimated Overpayment: ${money(state.total)}`,12,56)
- doc.text(`Overbid Impact: ${money(state.costPerJob)} per job`,12,63)
+ const peerDelta = Math.max(0, Math.round(100 - state.score))
+ doc.text(`Peer Benchmark Variance: You may be paying more than ${peerDelta}% of similar contractors`,12,63)
 
  // ===== EXECUTIVE SUMMARY =====
  doc.setFontSize(13)
@@ -220,7 +227,7 @@ function downloadPDF(){
  const narrative = [
   'This analysis benchmarks your insurance program against California contractor peer data using WCIRB payroll modeling, commercial auto fleet benchmarks, and trade-specific liability trends.',
   `Primary pricing concerns were identified in: ${state.insights.slice(0,3).map(i=>state.names[i.k]).join(', ')}.`,
-  'Contractors paying materially above benchmark often experience higher bid costs, reduced project competitiveness, and unnecessary premium leakage.',
+  'Businesses scoring materially outside peer benchmarks may be paying more than similar California contractors based on risk score analysis and underwriting comparisons.',
   'Even when pricing appears competitive, policies should still be reviewed for exclusions, subcontractor limitations, endorsements, and carrier appetite alignment.'
  ]
 
@@ -272,8 +279,18 @@ function downloadPDF(){
 
    const img = canvas.toDataURL('image/png')
 
-   // SINGLE PAGE VISUAL REPORT
-   doc.addImage(img,'PNG',148,30,135,150)
+   // SINGLE PAGE VISUAL REPORT - PROPERLY SCALED
+ const maxWidth = 125
+ const maxHeight = 135
+
+ const ratio = Math.min(maxWidth / canvas.width, maxHeight / canvas.height)
+ const imgWidth = canvas.width * ratio
+ const imgHeight = canvas.height * ratio
+
+ const xPos = 155
+ const yPos = 38
+
+ doc.addImage(img,'PNG',xPos,yPos,imgWidth,imgHeight)
 
    // ===== FOOTER =====
    doc.setFontSize(9)
@@ -291,3 +308,4 @@ function downloadPDF(){
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </body>
 </html>
+
