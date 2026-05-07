@@ -6,6 +6,7 @@
 <title>Albano Insurance | Insurance Risk Analysis</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 body{margin:0;font-family:'Inter',sans-serif;background:#fff;color:#0a0a0a}
 .header{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:22px;font-size:22px;font-weight:700;text-align:center}
@@ -42,7 +43,7 @@ button{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:14px
 </select>
 <input id="revenue" placeholder="Annual Revenue" oninput="fmtInput(this)">
 <input id="payroll" placeholder="Payroll (optional)" oninput="fmtInput(this)">
-<input id="autos" placeholder="# Vehicles">
+<input id="autos" placeholder="# Vehicles" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
 
 <h4>Current Premiums</h4>
 <input id="gl" placeholder="General Liability" oninput="fmtInput(this)">
@@ -81,7 +82,12 @@ function num(v){
       .replace(/[^0-9.-]/g,'')
   ) || 0
 }
-function money(n){return "$"+n.toLocaleString('en-US',{minimumFractionDigits:2})}
+function money(n){
+  return "$" + Number(n || 0).toLocaleString('en-US',{
+    minimumFractionDigits:2,
+    maximumFractionDigits:2
+  })
+}
 function fmtInput(el){
 
   let cursorPosition = el.selectionStart
@@ -106,7 +112,8 @@ function fmtInput(el){
     ? `${whole}.${decimal.slice(0,2)}`
     : whole
 
-  sition, cursorPosition)
+  setTimeout(() => {
+    el.setSelectionRange(cursorPosition, cursorPosition)
   },0)
 }
 function validEmail(e){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)}
@@ -259,7 +266,7 @@ This analysis compares your insurance structure against California contractor pe
 
 Top Cost Drivers:
 
-${insights.slice(0,3).map(i => `• ${names[i.k]}: ${money(i.impact)}`).join('\\n')}
+${insights.slice(0,3).map(i => `• ${names[i.k]}: ${money(i.impact)}`).join('\n')}
 
 Recommended Action:
 
@@ -284,6 +291,16 @@ cgibson@addlins.com`
 }
 
 async function downloadPDF(){
+
+ if(typeof html2canvas === 'undefined'){
+   alert('PDF library failed to load. Please refresh the page.')
+   return
+ }
+
+ if(typeof window.jspdf === 'undefined'){
+   alert('PDF engine failed to load. Please refresh the page.')
+   return
+ }
  const { jsPDF } = window.jspdf
  if(!state) return alert('Run report first')
 
@@ -381,8 +398,54 @@ async function downloadPDF(){
  doc.text('916-864-4983 | cgibson@addlins.com',18,185)
 
  // ===== VISUAL REPORT SECTION =====
+ await new Promise(resolve => setTimeout(resolve,250))
+
  const reportNode = document.getElementById('report')
  const downloadBtn = reportNode.querySelector('button')
- if(downloadBtn) downanvas/1.4.1/html2canvas.min.js"></script>
+ if(downloadBtn) downloadBtn.style.display='none'
+
+ try {
+
+ const canvas = await html2canvas(reportNode,{
+   scale:1.4,
+   backgroundColor:'#ffffff',
+   useCORS:true,
+   logging:false,
+   scrollY:-window.scrollY
+ })
+
+ const img = canvas.toDataURL('image/png')
+
+ const maxWidth = 120
+ const maxHeight = 120
+
+ const ratio = Math.min(maxWidth / canvas.width, maxHeight / canvas.height)
+ const imgWidth = canvas.width * ratio
+ const imgHeight = canvas.height * ratio
+
+ const xPos = 162
+ const yPos = 48
+
+ doc.addImage(img,'PNG',xPos,yPos,imgWidth,imgHeight)
+
+ doc.setFontSize(9)
+ doc.setTextColor(120)
+ doc.line(12,198,285,198)
+ doc.text('Albano Insurance Solutions | CA License #0442296',12,204)
+ doc.text('Chris Gibson | 916-864-4983 | cgibson@addlins.com',175,204)
+
+ if(downloadBtn) downloadBtn.style.display='block'
+
+ setTimeout(()=>{
+   doc.save('Insurance-Risk-Analysis-Executive-Summary.pdf')
+ },200)
+
+ } catch(err){
+   console.error(err)
+   alert('PDF generation failed.')
+   if(downloadBtn) downloadBtn.style.display='block'
+ }
+}</script>
+
 </body>
 </html>
