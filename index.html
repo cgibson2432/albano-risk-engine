@@ -147,7 +147,8 @@ function runAnalysis(){
  state={total,insights,tableHTML:html,score,costPerJob,names}
 
  riskScore.innerText=`Risk Score vs Peers: ${score}/100`
- jobImpact.innerText=`Estimated Overbidding Impact: ${money(costPerJob)} per job`
+ const peerDelta = Math.max(0, Math.round(100 - score))
+ jobImpact.innerText=`You may be paying more than ${peerDelta}% of similar California contractors based on peer benchmark scoring.`
 
  summary.innerText=`Estimated Overpayment: ${money(total)}
 
@@ -262,7 +263,7 @@ function downloadPDF(){
  if(downloadBtn) downloadBtn.style.display='none'
 
  html2canvas(reportNode,{
-   scale:2,
+   scale:1.4,
    backgroundColor:'#ffffff',
    useCORS:true,
    logging:false,
@@ -271,18 +272,19 @@ function downloadPDF(){
 
    const img = canvas.toDataURL('image/png')
 
-   // RIGHT SIDE VISUAL REPORT
-   doc.addImage(img,'PNG',150,32,132,160)
+   // SINGLE PAGE VISUAL REPORT
+   doc.addImage(img,'PNG',148,30,135,150)
 
    // ===== FOOTER =====
    doc.setFontSize(9)
    doc.setTextColor(120)
    doc.line(12,198,285,198)
    doc.text('Albano Insurance Solutions | CA License #0442296',12,204)
-   doc.text('Insurance Risk Analysis Executive Summary',205,204)
+   doc.text('Chris Gibson | 916-864-4983 | cgibson@addlins.com',175,204)
 
    if(downloadBtn) downloadBtn.style.display='block'
    doc.save('Insurance-Risk-Analysis-Executive-Summary.pdf')
+ })
  })
 }
 </script>
