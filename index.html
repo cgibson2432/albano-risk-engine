@@ -50,7 +50,7 @@ button{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:14px
 <input id="auto" placeholder="Auto" oninput="fmtInput(this)">
 <input id="umbrella" placeholder="Umbrella" oninput="fmtInput(this)">
 
-<button type="button" onclick="runAnalysis()">Generate Report</button>
+<button type="button" id="generateBtn" onclick="runAnalysis(); return false;">Generate Report</button>
 </div>
 
 <div class="card" id="report" style="display:none;background:#ffffff;padding:20px;border:1px solid #dfe7f1">
@@ -63,7 +63,7 @@ button{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:14px
 </div>
 <div id="summary" class="exec"></div>
 <table id="table" class="table"></table>
-<button type="button" onclick="downloadPDF()">Download PDF</button>
+<button type="button" id="pdfBtn" onclick="downloadPDF(); return false;">Download PDF</button>
 </div>
 
 <div class="footer">
@@ -84,9 +84,11 @@ function num(v){
 function money(n){return "$"+n.toLocaleString('en-US',{minimumFractionDigits:2})}
 function fmtInput(el){
 
-  let raw =
-    (el.value || '')
-      .replace(/[^0-9.]/g,'')
+  let cursorPosition = el.selectionStart
+
+  let raw = String(el.value || '')
+    .replace(/,/g,'')
+    .replace(/[^0-9.]/g,'')
 
   if(raw === ''){
     el.value = ''
@@ -95,13 +97,16 @@ function fmtInput(el){
 
   const parts = raw.split('.')
 
-  parts[0] =
-    Number(parts[0]).toLocaleString('en-US')
+  let whole = parts[0]
+  let decimal = parts[1] || ''
 
-  el.value =
-    parts.length > 1
-      ? `${parts[0]}.${parts[1].slice(0,2)}`
-      : parts[0]
+  whole = Number(whole).toLocaleString('en-US')
+
+  el.value = decimal.length > 0
+    ? `${whole}.${decimal.slice(0,2)}`
+    : whole
+
+  el.setSelectionRange(cursorPosition, cursorPosition)
 }
 function validEmail(e){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)}
 
@@ -273,11 +278,12 @@ cgibson@addlins.com`
 
     console.error(err)
 
-    alert('Calculation error. Check browser console.')
+    console.error(err)
+    alert('Calculation error. Please verify all fields are completed correctly.')
   }
 }
 
-function downloadPDF(){
+async function downloadPDF(){
  const { jsPDF } = window.jspdf
  if(!state) return alert('Run report first')
 
@@ -379,8 +385,11 @@ function downloadPDF(){
  const downloadBtn = reportNode.querySelector('button')
  if(downloadBtn) downloadBtn.style.display='none'
 
- setTimeout(() => {
- html2canvas(reportNode,{
+ setTimeout(async () => {
+
+ try {
+
+ const canvas = await html2canvas(reportNode,{
    scale:1.4,
    backgroundColor:'#ffffff',
    useCORS:true,
@@ -412,8 +421,14 @@ function downloadPDF(){
 
    if(downloadBtn) downloadBtn.style.display='block'
    doc.save('Insurance-Risk-Analysis-Executive-Summary.pdf')
- })
- },300)
+  })
+
+ } catch(err){
+   console.error(err)
+   alert('PDF generation failed.')
+ }
+
+},300)
  })
   }
 </script>
