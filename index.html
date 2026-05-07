@@ -113,58 +113,140 @@ return{gl:rev*DATA.base.gl,wc:(p/100)*DATA.wcRates[trade],auto:(autos||0)*DATA.b
 
 function heat(p){return p>25?'high':p>10?'mid':'low'}
 
-let state=null;
+let state = null;
 
-function runAnalysis(){
- const emailVal=document.getElementById('email').value.trim();
- if(!validEmail(emailVal)){document.getElementById('emailError').style.display='block';return;}else{document.getElementById('emailError').style.display='none';}
+function runAnalysis() {
 
- let rev=num(revenue.value); if(!rev) return alert('Enter revenue');
- let tradeSel=trade.value;
- let bench=benchmark(tradeSel,rev,num(payroll.value),num(autos.value));
+  try {
 
- let cur={gl:num(gl.value),wc:num(wc.value),auto:num(auto.value),umbrella:num(umbrella.value)}
+    const emailVal = document.getElementById('email').value.trim()
 
- let rows=['gl','wc','auto','umbrella']
- let names={gl:'General Liability',wc:'Workers Comp',auto:'Commercial Auto',umbrella:'Umbrella'}
+    if (!validEmail(emailVal)) {
+      document.getElementById('emailError').style.display = 'block'
+      return
+    } else {
+      document.getElementById('emailError').style.display = 'none'
+    }
 
- let html='<tr><th>Coverage</th><th>Current</th><th>Benchmark</th><th>Diff</th><th>%</th></tr>'
- let insights=[]; let total=0; let score=100;
+    const rev = num(document.getElementById('revenue').value)
 
- rows.forEach(k=>{
-  let c=cur[k],e=bench[k],d=c-e,p=e?d/e*100:0
-  if(d>0){total+=d;insights.push({k,impact:d}); score-=Math.min(25,Math.abs(p))}
-  html+=`<tr class="${heat(p)}"><td>${names[k]}</td><td>${money(c)}</td><td>${money(e)}</td><td>${money(d)}</td><td>${p.toFixed(1)}%</td></tr>`
- })
+    if (!rev || rev <= 0) {
+      alert('Please enter annual revenue')
+      return
+    }
 
- score=Math.max(40,Math.round(score))
- drawGauge(score)
+    const tradeSel = document.getElementById('trade').value
+    const payrollVal = num(document.getElementById('payroll').value)
+    const autosVal = num(document.getElementById('autos').value)
 
- let jobs=Math.max(1,Math.round(rev/50000))
- let costPerJob=total/jobs
+    const bench = benchmark(tradeSel, rev, payrollVal, autosVal)
 
- insights.sort((a,b)=>b.impact-a.impact)
- state={total,insights,tableHTML:html,score,costPerJob,names}
+    const cur = {
+      gl: num(document.getElementById('gl').value),
+      wc: num(document.getElementById('wc').value),
+      auto: num(document.getElementById('auto').value),
+      umbrella: num(document.getElementById('umbrella').value)
+    }
 
- riskScore.innerText=`Risk Score vs Peers: ${score}/100`
- const peerDelta = Math.max(0, Math.round(100 - score))
- jobImpact.innerText=`You may be paying more than ${peerDelta}% of similar California contractors based on peer benchmark scoring.`
+    const rows = ['gl','wc','auto','umbrella']
 
- summary.innerText=`Estimated Overpayment: ${money(total)}
+    const names = {
+      gl: 'General Liability',
+      wc: 'Workers Compensation',
+      auto: 'Commercial Auto',
+      umbrella: 'Umbrella'
+    }
+
+    let html = `
+      <tr>
+        <th>Coverage</th>
+        <th>Current</th>
+        <th>Benchmark</th>
+        <th>Difference</th>
+        <th>Variance</th>
+      </tr>
+    `
+
+    let insights = []
+    let total = 0
+    let score = 100
+
+    rows.forEach(k => {
+
+      const current = cur[k] || 0
+      const expected = bench[k] || 0
+      const diff = current - expected
+      const pct = expected ? (diff / expected) * 100 : 0
+
+      if (diff > 0) {
+        total += diff
+        insights.push({ k, impact: diff })
+        score -= Math.min(25, Math.abs(pct))
+      }
+
+      html += `
+        <tr class="${heat(pct)}">
+          <td>${names[k]}</td>
+          <td>${money(current)}</td>
+          <td>${money(expected)}</td>
+          <td>${money(diff)}</td>
+          <td>${pct.toFixed(1)}%</td>
+        </tr>
+      `
+    })
+
+    score = Math.max(40, Math.round(score))
+
+    drawGauge(score)
+
+    insights.sort((a,b) => b.impact - a.impact)
+
+    const peerDelta = Math.max(0, Math.round(100 - score))
+
+    state = {
+      total,
+      insights,
+      tableHTML: html,
+      score,
+      peerDelta,
+      names
+    }
+
+    document.getElementById('riskScore').innerText =
+      `Risk Score vs Peers: ${score}/100`
+
+    document.getElementById('jobImpact').innerText =
+      `You may be paying more than ${peerDelta}% of similar California contractors based on peer benchmark scoring.`
+
+    document.getElementById('summary').innerText =
+`Estimated Premium Variance: ${money(total)}
 
 Industry Benchmark Findings:
-This analysis compares your insurance structure against California contractor peer benchmarks using WCIRB payroll modeling, trade-specific liability assumptions, and commercial auto fleet trends.
+
+This analysis compares your insurance structure against California contractor peer benchmarks using WCIRB payroll modeling, commercial auto fleet assumptions, and trade-specific liability benchmarks.
 
 Top Cost Drivers:
-${insights.slice(0,3).map(i=>`• ${names[i.k]}: ${money(i.impact)}`).join('\n')}
+
+${insights.slice(0,3).map(i => `• ${names[i.k]}: ${money(i.impact)}`).join('\n')}
 
 Recommended Action:
-Review pricing, endorsements, exclusions, subcontractor limitations, and carrier fit to improve competitiveness and reduce insurance leakage.
 
-Contact Chris Gibson at 916-864-4983 or cgibson@addlins.com for a full insurance review.`
+Review pricing, endorsements, exclusions, subcontractor limitations, and carrier alignment.
 
- table.innerHTML=html
- report.style.display='block'
+Contact Chris Gibson:
+916-864-4983
+cgibson@addlins.com`
+
+    document.getElementById('table').innerHTML = html
+
+    document.getElementById('report').style.display = 'block'
+
+  } catch(err) {
+
+    console.error(err)
+
+    alert('Calculation error. Check browser console.')
+  }
 }
 
 function downloadPDF(){
