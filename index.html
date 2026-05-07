@@ -186,7 +186,7 @@ function downloadPDF(){
 
  // HEADER TITLE
  doc.setTextColor(255)
- doc.setFontSize(18)
+ doc.setFontSize(16)
  doc.text('Insurance Risk Analysis Executive Summary',155,15)
 
  // ===== LOGO =====
@@ -280,15 +280,15 @@ function downloadPDF(){
    const img = canvas.toDataURL('image/png')
 
    // SINGLE PAGE VISUAL REPORT - PROPERLY SCALED
- const maxWidth = 125
- const maxHeight = 135
+ const maxWidth = 120
+ const maxHeight = 120
 
  const ratio = Math.min(maxWidth / canvas.width, maxHeight / canvas.height)
  const imgWidth = canvas.width * ratio
  const imgHeight = canvas.height * ratio
 
- const xPos = 155
- const yPos = 38
+ const xPos = 162
+ const yPos = 48
 
  doc.addImage(img,'PNG',xPos,yPos,imgWidth,imgHeight)
 
@@ -302,10 +302,9 @@ function downloadPDF(){
    if(downloadBtn) downloadBtn.style.display='block'
    doc.save('Insurance-Risk-Analysis-Executive-Summary.pdf')
  })
- })
+  })
 }
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </body>
 </html>
-
