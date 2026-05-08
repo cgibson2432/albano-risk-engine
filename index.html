@@ -161,7 +161,26 @@ function heat(p){return p>25?'high':p>10?'mid':'low'}
 
 let state = null;
 
-function runAnalysis() {
+async function pushLead(data){
+
+  try {
+
+    await fetch('https://hook.us2.make.com/r3k8n4tsh0lfn6fypy6welptxdkhigtq',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify(data)
+    })
+
+    console.log('Lead pushed successfully')
+
+  } catch(err){
+    console.error('Lead push failed:', err)
+  }
+}
+
+function runAnalysis(){
 
   try {
 
@@ -298,6 +317,19 @@ cgibson@addlins.com`
     document.getElementById('table').innerHTML = html
 
     document.getElementById('report').style.display = 'block'
+
+pushLead({
+  name: document.getElementById('name') ? document.getElementById('name').value : '',
+  email: document.getElementById('email') ? document.getElementById('email').value : '',
+  revenue: rev,
+  payroll: payrollVal,
+  autos: autosVal,
+  trade: tradeSel,
+  riskScore: score,
+  premiumVariance: total,
+  benchmarkDelta: peerDelta,
+  generatedAt: new Date().toISOString()
+})
     document.getElementById('report').offsetHeight
 
   } catch(err) {
