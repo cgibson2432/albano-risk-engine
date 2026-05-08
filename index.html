@@ -6,7 +6,7 @@
 <title>Albano Insurance | Insurance Risk Analysis</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
 <style>
 body{margin:0;font-family:'Inter',sans-serif;background:#fff;color:#0a0a0a}
 .header{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:22px;font-size:22px;font-weight:700;text-align:center}
@@ -27,12 +27,11 @@ button{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:14px
 </style>
 </head>
 <body>
-<div class="header">Insurance Risk Analysis Report</div>
+<div class="header">Albano Insurance Solutions | Insurance Risk Analysis Executive Summary</div>ce Risk Analysis Executive Summary</div>
 <div class="container">
 
 <div class="card">
-<input id="business" placeholder="Business Name">
-<input id="email" type="email" placeholder="Email (required)">
+<input id=<input id="email" type="email" required placeholder="Email Address \(required\)">="email" placeholder="Email (required)">
 <div id="emailError" class="error">Please enter a valid email.</div>
 <select id="trade">
 <option>Electrician</option>
@@ -254,40 +253,15 @@ function runAnalysis() {
     document.getElementById('riskScore').innerText =
       `Risk Score vs Peers: ${score}/100`
 
-    document.getElementById('jobImpact').innerText =
-      `You may be paying more than ${peerDelta}% of similar California contractors based on peer benchmark scoring.`
-
-    document.getElementById('summary').innerText =
+    document.getElemetElementById('summary').innerText =
 `Estimated Premium Variance: ${money(total)}
 
 Industry Benchmark Findings:
 
-This analysis compares your insurance structure against California contractor peer benchmarks using WCIRB payroll modeling, commercial auto fleet assumptions, and trade-specific liability benchmarks.
-
-Top Cost Drivers:
-
-${insights.slice(0,3).map(i => `• ${names[i.k]}: ${money(i.impact)}`).join('\n')}
-
-Recommended Action:
-
-Review pricing, endorsements, exclusions, subcontractor limitations, and carrier alignment.
-
-Contact Chris Gibson:
-916-864-4983
-cgibson@addlins.com`
-
-    document.getElementById('table').innerHTML = html
-
-    document.getElementById('report').style.display = 'block'
+This analysis compares your insurance structure against California contractor peer benchmarks uCalifornia Market Summary:\n\nCalifornia contractor insurance markets continue to experience underwriting tightening, higher commercial auto severity losses, increased Workers Compensation scrutiny, and stronger carrier focus on trade specialization.\n\nPeer Benchmark Findings:\n\nThis analysis compares your insurance structure against California contractor peer benchmarks using WCIRB payroll modeling, commercial auto fleet assumptions, and trade-specific liability trends.yId('report').style.display = 'block'
     document.getElementById('report').offsetHeight
 
-  } catch(err) {
-
-    console.error(err)
-
-    console.error(err)
-    alert('Calculation error. Please verify all fields are completed correctly.')
-  }
+  } catch(err)Recommendations:or• Review pricing competitiveness\n• Review endorsements and exclusions\n• Evaluate carrier appetite alignment\n• Review Workers Compensation classificationsmpContact Chris Gibson for a complimentary insurance review:}
 }
 
 async function downloadPDF(){
@@ -297,11 +271,8 @@ async function downloadPDF(){
    return
  }
 
- if(typeof window.jspdf === 'undefined'){
-   alert('PDF engine failed to load. Please refresh the page.')
-   return
- }
- const { jsPDF } = window.jspdf
+ if(typeof winfined'){
+   alert(ow.jspdf
  if(!state) return alert('Run report first')
 
  const doc = new jsPDF('landscape','mm','a4')
@@ -446,6 +417,6 @@ async function downloadPDF(){
    if(downloadBtn) downloadBtn.style.display='block'
  }
 }</script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </body>
 </html>
