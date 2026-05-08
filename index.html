@@ -17,7 +17,10 @@ button{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:14px
 .table{width:100%;border-collapse:collapse;margin-top:15px}
 .table td,.table th{border:1px solid #e6edf5;padding:10px}
 .table th{background:#0b2a45;color:#fff}
-.high{background:#fdeaea}.mid{background:#fff5e6}.low{background:#e6f6ec}
+.high{background:#f8d7da;color:#7f1d1d;font-weight:600}.mid{background:#fff3cd;color:#7c5a00;font-weight:600}.low{background:#d1fae5;color:#065f46;font-weight:600}
+.heatmap-title{font-size:18px;font-weight:700;margin:18px 0 10px}
+.heatmap-bar{height:18px;border-radius:30px;background:linear-gradient(90deg,#2ecc71,#f1c40f,#e74c3c);margin-top:8px;position:relative}
+.heatmap-marker{position:absolute;top:-5px;width:4px;height:28px;background:#0b2a45;border-radius:4px}
 .exec{background:#f3f7fc;padding:18px;border-left:4px solid #1f6fb2;white-space:pre-line}
 .footer{text-align:center;margin-top:20px;font-size:12px;color:#666}
 .score{font-size:24px;font-weight:700;margin-bottom:10px}
@@ -27,11 +30,12 @@ button{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:14px
 </style>
 </head>
 <body>
-<div class="header">Albano Insurance Solutions | Insurance Risk Analysis Executive Summary</div>ce Risk Analysis Executive Summary</div>
+<div class="header">Albano Insurance Solutions | Insurance Risk Analysis Executive Summary</div>
 <div class="container">
 
 <div class="card">
-<input id=<input id="email" type="email" required placeholder="Email Address \(required\)">="email" placeholder="Email (required)">
+<input id="business" placeholder="Business Name">
+<input id="email" type="email" required placeholder="Email Address \(required\)">
 <div id="emailError" class="error">Please enter a valid email.</div>
 <select id="trade">
 <option>Electrician</option>
@@ -62,6 +66,10 @@ button{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:14px
 </div>
 </div>
 <div id="summary" class="exec"></div>
+<div class="heatmap-title">Premium Benchmark Heat Map</div>
+<div class="heatmap-bar">
+<div id="heatMarker" class="heatmap-marker" style="left:50%"></div>
+</div>
 <table id="table" class="table"></table>
 <button type="button" id="pdfBtn" onclick="downloadPDF(); return false;">Download PDF</button>
 </div>
@@ -253,15 +261,52 @@ function runAnalysis() {
     document.getElementById('riskScore').innerText =
       `Risk Score vs Peers: ${score}/100`
 
-    document.getElemetElementById('summary').innerText =
+    document.getElementById('jobImpact').innerText =
+      `You may be paying more than ${peerDelta}% of similar California contractors based on peer benchmark scoring.`
+
+    const marker = document.getElementById('heatMarker')
+    if(marker){
+      marker.style.left = `${Math.min(95,Math.max(5,peerDelta))}%`
+    }
+
+    document.getElementById('summary').innerText =
 `Estimated Premium Variance: ${money(total)}
 
-Industry Benchmark Findings:
+California Market Summary:
 
-This analysis compares your insurance structure against California contractor peer benchmarks uCalifornia Market Summary:\n\nCalifornia contractor insurance markets continue to experience underwriting tightening, higher commercial auto severity losses, increased Workers Compensation scrutiny, and stronger carrier focus on trade specialization.\n\nPeer Benchmark Findings:\n\nThis analysis compares your insurance structure against California contractor peer benchmarks using WCIRB payroll modeling, commercial auto fleet assumptions, and trade-specific liability trends.yId('report').style.display = 'block'
+California contractor insurance markets continue to experience underwriting tightening, higher commercial auto severity losses, increased Workers Compensation scrutiny, and stronger carrier focus on trade specialization.
+
+Peer Benchmark Findings:
+
+This analysis compares your insurance structure against California contractor peer benchmarks using WCIRB payroll modeling, commercial auto fleet assumptions, and trade-specific liability trends.
+
+Top Cost Drivers:
+
+${insights.slice(0,3).map(i => `• ${names[i.k]}: ${money(i.impact)}`).join('\n')}
+
+Recommendations:
+
+• Review pricing competitiveness
+• Review endorsements and exclusions
+• Evaluate carrier appetite alignment
+• Review Workers Compensation classifications
+
+Contact Chris Gibson for a complimentary insurance review:
+916-864-4983
+cgibson@addlins.com`
+
+    document.getElementById('table').innerHTML = html
+
+    document.getElementById('report').style.display = 'block'
     document.getElementById('report').offsetHeight
 
-  } catch(err)Recommendations:or• Review pricing competitiveness\n• Review endorsements and exclusions\n• Evaluate carrier appetite alignment\n• Review Workers Compensation classificationsmpContact Chris Gibson for a complimentary insurance review:}
+  } catch(err) {
+
+    console.error(err)
+
+    console.error(err)
+    alert('Calculation error. Please verify all fields are completed correctly.')
+  }
 }
 
 async function downloadPDF(){
@@ -271,8 +316,11 @@ async function downloadPDF(){
    return
  }
 
- if(typeof winfined'){
-   alert(ow.jspdf
+ if(typeof window.jspdf === 'undefined'){
+   alert('PDF engine failed to load. Please refresh the page.')
+   return
+ }
+ const { jsPDF } = window.jspdf
  if(!state) return alert('Run report first')
 
  const doc = new jsPDF('landscape','mm','a4')
@@ -317,7 +365,7 @@ async function downloadPDF(){
  doc.text(`Prepared For: ${biz}`,12,35)
  doc.text(`Trade: ${tradeVal}`,12,42)
  doc.text(`Risk Score: ${state.score}/100`,12,49)
- doc.text(`Estimated Overpayment: ${money(state.total)}`,12,56)
+ doc.text(`Estimated Premium Variance: ${money(state.total)}`,12,56)
  const peerDelta = Math.max(0, Math.round(100 - state.score))
  doc.text(`Peer Benchmark Variance: You may be paying more than ${peerDelta}% of similar contractors`,12,63)
 
@@ -367,6 +415,30 @@ async function downloadPDF(){
  doc.text('Schedule a coverage review with Chris Gibson',18,178)
  doc.setFontSize(10)
  doc.text('916-864-4983 | cgibson@addlins.com',18,185)
+
+ // ===== HEAT MAP =====
+ doc.setFontSize(12)
+ doc.text('Premium Benchmark Heat Map',150,38)
+
+ doc.setFillColor(46,204,113)
+ doc.rect(150,44,40,8,'F')
+
+ doc.setFillColor(241,196,15)
+ doc.rect(190,44,40,8,'F')
+
+ doc.setFillColor(231,76,60)
+ doc.rect(230,44,40,8,'F')
+
+ const heatPosition = Math.min(115, Math.max(0, state.peerDelta || 40))
+ doc.setDrawColor(11,42,69)
+ doc.setLineWidth(2)
+ doc.line(150 + heatPosition,40,150 + heatPosition,56)
+
+ doc.setFontSize(9)
+ doc.setTextColor(80)
+ doc.text('Competitive',152,60)
+ doc.text('Moderate',197,60)
+ doc.text('High Variance',235,60)
 
  // ===== VISUAL REPORT SECTION =====
  await new Promise(resolve => setTimeout(resolve,250))
