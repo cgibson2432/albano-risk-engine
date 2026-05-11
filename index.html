@@ -30,7 +30,7 @@ button{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:14px
 </style>
 </head>
 <body>
-<div class="header">Albano Insurance Solutions | Insurance Risk Analysis Executive Summary</div>
+<div class="header">Albano Insurance Solutions | California Contractor Insurance Benchmark Analysis</div>
 <div class="container">
 
 <div class="card">
@@ -293,29 +293,29 @@ async function runAnalysis(){
 
     drawGauge(score)
 
-    document.getElementById('riskScore').innerText = `Risk Score vs Peers: ${score}/100`
+    document.getElementById('riskScore').innerText = `Contractor Insurance Positioning Score: ${score}/100`
 
-    document.getElementById('jobImpact').innerText = `You may be paying more than ${peerDelta}% of similar California contractors based on peer benchmark scoring.`
+    document.getElementById('jobImpact').innerText = `Your insurance program appears to be priced above approximately ${peerDelta}% of similar California contractors based on current market benchmark modeling and underwriting trend analysis.`
 
     document.getElementById('summary').innerText =
-`Estimated Premium Variance: ${money(totalVariance)}
+`Estimated Annual Premium Variance: ${money(totalVariance)}
 
 California Market Summary:
 
-California contractor insurance markets continue to experience underwriting tightening, commercial auto severity increases, and stronger underwriting scrutiny across Workers Compensation classifications.
+California contractor insurance markets continue to tighten across Workers Compensation, Commercial Auto, and Umbrella lines as carriers respond to increased loss severity, litigation trends, and construction underwriting volatility.
 
-Top Cost Drivers:
+Primary Benchmark Findings:
 
 ${insights.slice(0,3).map(i => `• ${names[i.key]}: ${money(i.impact)}`).join('\n')}
 
-Recommendations:
+Recommended Next Steps:
 
-• Review pricing competitiveness
-• Review endorsements and exclusions
-• Evaluate carrier appetite alignment
-• Review Workers Compensation classifications
+• Review carrier competitiveness and market positioning
+• Review policy endorsements, exclusions, and sublimits
+• Evaluate carrier appetite and underwriting fit
+• Validate Workers Compensation classifications and payroll allocation
 
-Contact Chris Gibson for a complimentary insurance review:
+Contact Chris Gibson for a complimentary contractor insurance benchmarking review:
 916-864-4983
 cgibson@addlins.com`
 
@@ -367,7 +367,7 @@ async function downloadPDF(){
   doc.setTextColor(255)
   doc.setFontSize(20)
   doc.setFont('helvetica','bold')
-  doc.text('Insurance Risk Analysis Executive Summary',14,12)
+  doc.text('California Contractor Insurance Benchmark Analysis',14,12)
 
   doc.setTextColor(11,42,69)
   doc.setFontSize(11)
@@ -378,7 +378,7 @@ async function downloadPDF(){
   doc.line(10,32,287,32)
 
   doc.setFillColor(243,247,252)
-  doc.roundedRect(10,38,88,120,4,4,'F')
+  doc.roundedRect(10,38,90,138,4,4,'F')
 
   doc.setTextColor(11,42,69)
   doc.setFontSize(14)
@@ -393,7 +393,7 @@ async function downloadPDF(){
     `Business: ${business}`,
     `Trade: ${trade}`,
     `Risk Score: ${state.score}/100`,
-    `Estimated Premium Variance: ${money(state.totalVariance)}`,
+    `Estimated Annual Premium Variance: ${money(state.totalVariance)}`,
     `Benchmark Delta: ${state.peerDelta}%`,
     '',
     'California insurance markets continue',
@@ -414,7 +414,7 @@ async function downloadPDF(){
   doc.setFont('helvetica','bold')
   doc.setFontSize(13)
   doc.setTextColor(11,42,69)
-  doc.text('Recommended Next Steps',14,118)
+  doc.text('Recommended Next Steps',14,126)
 
   doc.setFont('helvetica','normal')
   doc.setFontSize(10)
@@ -429,20 +429,20 @@ async function downloadPDF(){
     '• Request full market comparison review'
   ]
 
-  let ry = 128
+  let ry = 138
   recommendations.forEach(line=>{
     doc.text(line,14,ry)
-    ry += 6
+    ry += 8
   })
 
   doc.setFont('helvetica','bold')
   doc.setTextColor(11,42,69)
-  doc.text('Contact Chris Gibson',14,166)
+  doc.text('Contact Chris Gibson',14,186)
 
   doc.setFont('helvetica','normal')
   doc.setTextColor(60)
-  doc.text('916-864-4983',14,174)
-  doc.text('cgibson@addlins.com',14,180)
+  doc.text('916-864-4983',14,194)
+  doc.text('cgibson@addlins.com',14,200)
 
   const reportNode = document.getElementById('report')
 
