@@ -411,29 +411,7 @@ async function downloadPDF(){
     y += 6
   })
 
-  doc.setFont('helvetica','bold')
-  doc.setFontSize(13)
-  doc.setTextColor(11,42,69)
-  doc.text('Recommended Next Steps',14,126)
-
-  doc.setFont('helvetica','normal')
-  doc.setFontSize(10)
-  doc.setTextColor(50)
-
-  const recommendations = [
-    '• Review current carrier competitiveness',
-    '• Review endorsements and exclusions',
-    '• Evaluate Workers Compensation codes',
-    '• Review Auto fleet pricing trends',
-    '• Evaluate umbrella adequacy',
-    '• Request full market comparison review'
-  ]
-
-  let ry = 138
-  recommendations.forEach(line=>{
-    doc.text(line,14,ry)
-    ry += 8
-  })
+  /* Removed duplicate Recommended Next Steps section from left column so the bolded recommendation section from the webpage heatmap report becomes the primary recommendation display in the PDF. */
 
   doc.setFont('helvetica','bold')
   doc.setTextColor(11,42,69)
