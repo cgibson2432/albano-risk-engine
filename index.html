@@ -411,16 +411,15 @@ async function downloadPDF(){
     y += 6
   })
 
-  /* Removed duplicate Recommended Next Steps section from left column so the bolded recommendation section from the webpage heatmap report becomes the primary recommendation display in the PDF. */
+  doc.setFillColor(11,42,69)
+  doc.roundedRect(14,132,80,26,3,3,'F')
 
   doc.setFont('helvetica','bold')
-  doc.setTextColor(11,42,69)
-  doc.text('Contact Chris Gibson',14,186)
-
-  doc.setFont('helvetica','normal')
-  doc.setTextColor(60)
-  doc.text('916-864-4983',14,194)
-  doc.text('cgibson@addlins.com',14,200)
+  doc.setFontSize(10)
+  doc.setTextColor(255)
+  doc.text('Contact Chris Gibson',18,142)
+  doc.text('916-864-4983',18,149)
+  doc.text('cgibson@addlins.com',18,156)
 
   const reportNode = document.getElementById('report')
 
