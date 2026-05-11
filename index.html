@@ -54,7 +54,7 @@ button{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:14px
 <input id="auto" placeholder="Auto" oninput="fmtInput(this)">
 <input id="umbrella" placeholder="Umbrella" oninput="fmtInput(this)">
 
-<button type="button" id="generateBtn" onclick="runAnalysis(); return false;">Generate Report</button>
+<button type="button" id="generateBtn">Generate Report</button>
 </div>
 
 <div class="card" id="report" style="display:none;background:#ffffff;padding:20px;border:1px solid #dfe7f1">
@@ -71,7 +71,7 @@ button{background:linear-gradient(90deg,#0b2a45,#1f6fb2);color:#fff;padding:14px
 <div id="heatMarker" class="heatmap-marker" style="left:50%"></div>
 </div>
 <table id="table" class="table"></table>
-<button type="button" id="pdfBtn" onclick="downloadPDF(); return false;">Download PDF</button>
+<button type="button" id="pdfBtn">Download PDF</button>
 </div>
 
 <div class="footer">
@@ -306,8 +306,7 @@ California contractor insurance markets continue to experience underwriting tigh
 
 Top Cost Drivers:
 
-${insights.slice(0,3).map(i => `• ${names[i.key]}: ${money(i.impact)}`).join('
-')}
+${insights.slice(0,3).map(i => `• ${names[i.key]}: ${money(i.impact)}`).join('\n')}
 
 Recommendations:
 
@@ -393,9 +392,21 @@ async function downloadPDF(){
 
 window.addEventListener('DOMContentLoaded',()=>{
 
-  document.getElementById('generateBtn').addEventListener('click',runAnalysis)
+  const generateBtn = document.getElementById('generateBtn')
+  if(generateBtn){
+    generateBtn.addEventListener('click', async (e)=>{
+      e.preventDefault()
+      await runAnalysis()
+    })
+  }
 
-  document.getElementById('pdfBtn').addEventListener('click',downloadPDF)
+  const pdfBtn = document.getElementById('pdfBtn')
+  if(pdfBtn){
+    pdfBtn.addEventListener('click', async (e)=>{
+      e.preventDefault()
+      await downloadPDF()
+    })
+  }
 })
 </script>
 </body>
