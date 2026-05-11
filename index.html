@@ -355,37 +355,113 @@ async function downloadPDF(){
   const { jsPDF } = window.jspdf
   const doc = new jsPDF('landscape','mm','a4')
 
+  const business = document.getElementById('business').value || 'Client'
+  const trade = document.getElementById('trade').value
+
   doc.setFillColor(11,42,69)
-  doc.rect(0,0,297,24,'F')
+  doc.rect(0,0,297,18,'F')
+
+  doc.setFillColor(255,255,255)
+  doc.rect(0,18,297,12,'F')
 
   doc.setTextColor(255)
-  doc.setFontSize(18)
-  doc.text('Insurance Risk Analysis Executive Summary',14,15)
+  doc.setFontSize(20)
+  doc.setFont('helvetica','bold')
+  doc.text('Insurance Risk Analysis Executive Summary',14,12)
 
-  doc.setTextColor(0)
+  doc.setTextColor(11,42,69)
   doc.setFontSize(11)
+  doc.setFont('helvetica','normal')
+  doc.text('Albano Insurance Solutions | CA License #0442296',14,25)
 
-  doc.text(`Business: ${document.getElementById('business').value || 'Client'}`,14,38)
-  doc.text(`Trade: ${document.getElementById('trade').value}`,14,46)
-  doc.text(`Risk Score: ${state.score}/100`,14,54)
-  doc.text(`Premium Variance: ${money(state.totalVariance)}`,14,62)
+  doc.setDrawColor(220)
+  doc.line(10,32,287,32)
+
+  doc.setFillColor(243,247,252)
+  doc.roundedRect(10,38,88,120,4,4,'F')
+
+  doc.setTextColor(11,42,69)
+  doc.setFontSize(14)
+  doc.setFont('helvetica','bold')
+  doc.text('Client Summary',14,48)
+
+  doc.setFont('helvetica','normal')
+  doc.setFontSize(10)
+  doc.setTextColor(40)
+
+  const leftSummary = [
+    `Business: ${business}`,
+    `Trade: ${trade}`,
+    `Risk Score: ${state.score}/100`,
+    `Estimated Premium Variance: ${money(state.totalVariance)}`,
+    `Benchmark Delta: ${state.peerDelta}%`,
+    '',
+    'California insurance markets continue',
+    'to tighten for contractors, especially',
+    'for Workers Compensation and Auto.',
+    '',
+    'This benchmark compares current',
+    'insurance structure versus California',
+    'peer averages and underwriting trends.'
+  ]
+
+  let y = 58
+  leftSummary.forEach(line=>{
+    doc.text(line,14,y)
+    y += 6
+  })
+
+  doc.setFont('helvetica','bold')
+  doc.setFontSize(13)
+  doc.setTextColor(11,42,69)
+  doc.text('Recommended Next Steps',14,118)
+
+  doc.setFont('helvetica','normal')
+  doc.setFontSize(10)
+  doc.setTextColor(50)
+
+  const recommendations = [
+    '• Review current carrier competitiveness',
+    '• Review endorsements and exclusions',
+    '• Evaluate Workers Compensation codes',
+    '• Review Auto fleet pricing trends',
+    '• Evaluate umbrella adequacy',
+    '• Request full market comparison review'
+  ]
+
+  let ry = 128
+  recommendations.forEach(line=>{
+    doc.text(line,14,ry)
+    ry += 6
+  })
+
+  doc.setFont('helvetica','bold')
+  doc.setTextColor(11,42,69)
+  doc.text('Contact Chris Gibson',14,166)
+
+  doc.setFont('helvetica','normal')
+  doc.setTextColor(60)
+  doc.text('916-864-4983',14,174)
+  doc.text('cgibson@addlins.com',14,180)
 
   const reportNode = document.getElementById('report')
 
   const canvas = await html2canvas(reportNode,{
-    scale:1.2,
+    scale:1.5,
     backgroundColor:'#ffffff'
   })
 
   const img = canvas.toDataURL('image/png')
 
-  doc.addImage(img,'PNG',120,34,160,120)
+  doc.addImage(img,'PNG',105,38,178,132)
 
-  doc.setFontSize(9)
-  doc.setTextColor(100)
+  doc.setDrawColor(210)
   doc.line(10,198,287,198)
-  doc.text('Albano Insurance Solutions | CA License #0442296',12,204)
-  doc.text('Chris Gibson | 916-864-4983 | cgibson@addlins.com',165,204)
+
+  doc.setFontSize(8)
+  doc.setTextColor(120)
+  doc.text('Prepared by Albano Insurance Solutions | California Contractor Insurance Benchmark Analysis',12,204)
+  doc.text('Chris Gibson | 916-864-4983 | cgibson@addlins.com',190,204)
 
   doc.save('Insurance-Risk-Analysis-Executive-Summary.pdf')
 }
