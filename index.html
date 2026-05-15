@@ -118,12 +118,27 @@ function money(n){
 
 function fmtInput(el){
 
-  const value = String(el.value || '').replace(/,/g,'').replace(/[^0-9.]/g,'')
+  if(!el) return
 
-  if(!value){
+  let raw = String(el.value || '')
+    .replace(/,/g,'')
+    .replace(/[^0-9.]/g,'')
+
+  if(!raw){
     el.value = ''
     return
   }
+
+  const parts = raw.split('.')
+
+  parts[0] = Number(parts[0] || 0).toLocaleString('en-US')
+
+  if(parts.length > 1){
+    el.value = `${parts[0]}.${parts[1].slice(0,2)}`
+  } else {
+    el.value = parts[0]
+  }
+}
 
   const parts = value.split('.')
   const whole = Number(parts[0] || 0).toLocaleString('en-US')
@@ -181,15 +196,31 @@ function heatClass(p){
 
 async function pushLead(payload){
 
-  console.log('Sending Lead:', payload)
-
   try {
+
+    console.log('Sending Lead:', payload)
 
     const response = await fetch(WEBHOOK_URL,{
       method:'POST',
       headers:{
         'Content-Type':'application/json'
       },
+      body:JSON.stringify(payload)
+    })
+
+    const result = await response.text()
+
+    console.log('Webhook Success:', result)
+
+    return result
+
+  } catch(error){
+
+    console.error('Webhook Error:', error)
+
+    return null
+  }
+},
       body:JSON.stringify(payload)
     })
 
@@ -324,7 +355,11 @@ cgibson@addlins.com`
     const marker = document.getElementById('heatMarker')
     marker.style.left = `${Math.min(95,Math.max(5,peerDelta))}%`
 
-    document.getElementById('report').style.display = 'block'
+    const reportEl = document.getElementById('report')
+
+    if(reportEl){
+      reportEl.style.display = 'block'
+    }
 
     await pushLead({
       business,
@@ -430,7 +465,18 @@ async function downloadPDF(){
 
   const img = canvas.toDataURL('image/png')
 
-  doc.addImage(img,'PNG',105,38,178,132)
+  doc.setFillColor(248,250,252)
+  doc.roundedRect(102,36,180,124,3,3,'F')
+
+  doc.setDrawColor(220)
+  doc.roundedRect(102,36,180,124,3,3)
+
+  doc.setFont('helvetica','bold')
+  doc.setFontSize(12)
+  doc.setTextColor(11,42,69)
+  doc.text('Benchmark Visualization & Market Positioning',108,44)
+
+  doc.addImage(img,'PNG',108,48,168,108)
 
   doc.setDrawColor(210)
   doc.line(10,198,287,198)
@@ -445,12 +491,58 @@ async function downloadPDF(){
 
 window.addEventListener('DOMContentLoaded',()=>{
 
+  console.clear()
+
   const generateBtn = document.getElementById('generateBtn')
+  const pdfBtn = document.getElementById('pdfBtn')
+
   if(generateBtn){
-    generateBtn.addEventListener('click', async (e)=>{
+
+    generateBtn.replaceWith(generateBtn.cloneNode(true))
+
+    document.getElementById('generateBtn').addEventListener('click', async (e)=>{
+
       e.preventDefault()
-      await runAnalysis()
+
+      try {
+
+        await runAnalysis()
+
+      } catch(err){
+
+        console.error('Generate Report Error:', err)
+        alert('Unable to generate report. Please review inputs and try again.')
+      }
     })
+  }
+
+  if(pdfBtn){
+
+    pdfBtn.replaceWith(pdfBtn.cloneNode(true))
+
+    document.getElementById('pdfBtn').addEventListener('click', async (e)=>{
+
+      e.preventDefault()
+
+      try {
+
+        await downloadPDF()
+
+      } catch(err){
+
+        console.error('PDF Generation Error:', err)
+        alert('Unable to generate PDF report.')
+      }
+    })
+  }
+
+  document.querySelectorAll('.money-input').forEach(input=>{
+
+    input.addEventListener('input',()=>{
+      fmtInput(input)
+    })
+  })
+})
   }
 
   const pdfBtn = document.getElementById('pdfBtn')
