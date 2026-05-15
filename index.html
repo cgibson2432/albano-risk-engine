@@ -85,281 +85,228 @@ CA License #0442296
 <script>
 const WEBHOOK_URL = 'https://hook.us2.make.com/r3k8n4tsh0lfn6fypy6welptxdkhigtq'
 
-const DATA = {
-  base:{gl:.005,autoPerUnit:1800,umb:.002},
-  wcRates:{
-    Electrician:4.5,
-    Plumber:5.5,
-    Painter:6,
-    HVAC:5,
-    'General Contractor':6.5
-  },
-  payrollPct:{
-    Electrician:.32,
-    Plumber:.35,
-    Painter:.30,
-    HVAC:.34,
-    'General Contractor':.38
+const APP = {
+  state:null,
+  config:{
+    glRate:0.005,
+    umbrellaRate:0.002,
+    autoRate:1800,
+    wcRates:{
+      Electrician:4.5,
+      Plumber:5.5,
+      Painter:6,
+      HVAC:5,
+      'General Contractor':6.5
+    },
+    payrollFactors:{
+      Electrician:.32,
+      Plumber:.35,
+      Painter:.30,
+      HVAC:.34,
+      'General Contractor':.38
+    }
   }
 }
 
-let state = null
-
-function num(v){
-  return parseFloat(String(v || '').replace(/,/g,'').replace(/[^0-9.-]/g,'')) || 0
+function cleanNumber(value){
+  return parseFloat(String(value || '').replace(/,/g,'').replace(/[^0-9.-]/g,'')) || 0
 }
 
-function money(n){
-  return '$' + Number(n || 0).toLocaleString('en-US',{
-    minimumFractionDigits:2,
-    maximumFractionDigits:2
+function formatMoney(value){
+  return '$' + Number(value || 0).toLocaleString('en-US',{
+    minimumFractionDigits:0,
+    maximumFractionDigits:0
   })
 }
 
-function fmtInput(el){
-
-  if(!el) return
-
-  let raw = String(el.value || '')
-    .replace(/,/g,'')
-    .replace(/[^0-9.]/g,'')
-
+function formatInput(input){
+  const raw = String(input.value || '').replace(/,/g,'').replace(/[^0-9.]/g,'')
   if(!raw){
-    el.value = ''
+    input.value = ''
     return
   }
-
   const parts = raw.split('.')
+  parts[0] = Number(parts[0]).toLocaleString('en-US')
+  input.value = parts.join('.')
+}
 
-  parts[0] = Number(parts[0] || 0).toLocaleString('en-US')
+function calculateBenchmark(trade,revenue,payroll,autos){
 
-  if(parts.length > 1){
-    el.value = `${parts[0]}.${parts[1].slice(0,2)}`
-  } else {
-    el.value = parts[0]
+  const payrollBasis = payroll || revenue * APP.config.payrollFactors[trade]
+
+  return {
+    gl: revenue * APP.config.glRate,
+    wc: (payrollBasis / 100) * APP.config.wcRates[trade],
+    auto: autos * APP.config.autoRate,
+    umbrella: revenue * APP.config.umbrellaRate
   }
 }
 
-  const parts = value.split('.')
-  const whole = Number(parts[0] || 0).toLocaleString('en-US')
-  const decimal = parts[1] ? '.' + parts[1].slice(0,2) : ''
-
-  el.value = whole + decimal
+function varianceClass(value){
+  if(value > 25) return 'high'
+  if(value > 10) return 'mid'
+  return 'low'
 }
 
 function drawGauge(score){
 
- const c = document.getElementById('gauge')
- const ctx = c.getContext('2d')
+  const canvas = document.getElementById('gauge')
+  const ctx = canvas.getContext('2d')
 
- ctx.clearRect(0,0,120,120)
+  ctx.clearRect(0,0,120,120)
 
- const color = score > 75
-   ? '#2ecc71'
-   : score > 55
-   ? '#f1c40f'
-   : '#e74c3c'
+  const color = score > 75
+    ? '#2ecc71'
+    : score > 55
+    ? '#f1c40f'
+    : '#e74c3c'
 
- ctx.beginPath()
- ctx.arc(60,60,50,0,Math.PI*2)
- ctx.strokeStyle='#e5e7eb'
- ctx.lineWidth=10
- ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(60,60,48,0,Math.PI * 2)
+  ctx.strokeStyle = '#dbe5f0'
+  ctx.lineWidth = 10
+  ctx.stroke()
 
- ctx.beginPath()
- ctx.arc(60,60,50,-Math.PI/2,(score/100)*Math.PI*2-Math.PI/2)
- ctx.strokeStyle=color
- ctx.lineWidth=10
- ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(60,60,48,-Math.PI/2,((score / 100) * Math.PI * 2) - Math.PI/2)
+  ctx.strokeStyle = color
+  ctx.lineWidth = 10
+  ctx.stroke()
 
- ctx.font='20px Inter'
- ctx.fillStyle='#111827'
- ctx.textAlign='center'
- ctx.fillText(score,60,68)
-}
-
-function benchmark(trade,rev,payroll,autos){
-
- const p = payroll || rev * DATA.payrollPct[trade]
-
- return {
-   gl: rev * DATA.base.gl,
-   wc: (p / 100) * DATA.wcRates[trade],
-   auto: (autos || 0) * DATA.base.autoPerUnit,
-   umbrella: rev * DATA.base.umb
- }
-}
-
-function heatClass(p){
-  return p > 25 ? 'high' : p > 10 ? 'mid' : 'low'
+  ctx.fillStyle = '#0b2a45'
+  ctx.font = 'bold 22px Inter'
+  ctx.textAlign = 'center'
+  ctx.fillText(score,60,68)
 }
 
 async function pushLead(payload){
 
-  try {
+  try{
 
-    console.log('Sending Lead:', payload)
+    console.log('Sending lead',payload)
 
-    const response = await fetch(WEBHOOK_URL,{
+    await fetch(WEBHOOK_URL,{
       method:'POST',
-      headers:{
-        'Content-Type':'application/json'
-      },
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify(payload)
     })
 
-    const result = await response.text()
-
-    console.log('Webhook Success:', result)
-
-    return result
-
-  } catch(error){
-
-    console.error('Webhook Error:', error)
-
-    return null
-  }
-},
-      body:JSON.stringify(payload)
-    })
-
-    const result = await response.text()
-
-    console.log('Webhook Success:', result)
-
-  } catch(error){
-
-    console.error('Webhook Error:', error)
+  }catch(error){
+    console.error('Webhook Error',error)
   }
 }
 
 async function runAnalysis(){
 
-  try {
+  try{
 
     const business = document.getElementById('business').value.trim()
     const email = document.getElementById('email').value.trim()
     const trade = document.getElementById('trade').value
 
-    const revenue = num(document.getElementById('revenue').value)
-    const payroll = num(document.getElementById('payroll').value)
-    const autos = num(document.getElementById('autos').value)
+    const revenue = cleanNumber(document.getElementById('revenue').value)
+    const payroll = cleanNumber(document.getElementById('payroll').value)
+    const autos = cleanNumber(document.getElementById('autos').value)
 
-    if(!revenue || revenue <= 0){
+    if(!revenue){
       alert('Please enter annual revenue.')
       return
     }
 
     const current = {
-      gl:num(document.getElementById('gl').value),
-      wc:num(document.getElementById('wc').value),
-      auto:num(document.getElementById('auto').value),
-      umbrella:num(document.getElementById('umbrella').value)
+      gl:cleanNumber(document.getElementById('gl').value),
+      wc:cleanNumber(document.getElementById('wc').value),
+      auto:cleanNumber(document.getElementById('auto').value),
+      umbrella:cleanNumber(document.getElementById('umbrella').value)
     }
 
-    const expected = benchmark(trade,revenue,payroll,autos)
+    const benchmark = calculateBenchmark(trade,revenue,payroll,autos)
 
-    const rows = ['gl','wc','auto','umbrella']
-
-    const names = {
+    const labels = {
       gl:'General Liability',
       wc:'Workers Compensation',
       auto:'Commercial Auto',
       umbrella:'Umbrella'
     }
 
-    let totalVariance = 0
     let score = 100
-    let insights = []
-
-    let html = `
+    let varianceTotal = 0
+    let tableHTML = `
       <tr>
         <th>Coverage</th>
         <th>Current</th>
         <th>Benchmark</th>
-        <th>Difference</th>
         <th>Variance</th>
       </tr>
     `
 
-    rows.forEach(key => {
+    Object.keys(current).forEach(key=>{
 
-      const cur = current[key] || 0
-      const bench = expected[key] || 0
-      const diff = cur - bench
-      const variance = bench ? ((diff / bench) * 100) : 0
+      const currentValue = current[key]
+      const benchmarkValue = benchmark[key]
+      const variance = benchmarkValue
+        ? ((currentValue - benchmarkValue) / benchmarkValue) * 100
+        : 0
 
-      if(diff > 0){
-        totalVariance += diff
-        insights.push({key,impact:diff})
-        score -= Math.min(25,Math.abs(variance))
+      if(currentValue > benchmarkValue){
+        varianceTotal += currentValue - benchmarkValue
+        score -= Math.min(20,Math.abs(variance))
       }
 
-      html += `
-        <tr class="${heatClass(Math.abs(variance))}">
-          <td>${names[key]}</td>
-          <td>${money(cur)}</td>
-          <td>${money(bench)}</td>
-          <td>${money(diff)}</td>
+      tableHTML += `
+        <tr class="${varianceClass(Math.abs(variance))}">
+          <td>${labels[key]}</td>
+          <td>${formatMoney(currentValue)}</td>
+          <td>${formatMoney(benchmarkValue)}</td>
           <td>${variance.toFixed(1)}%</td>
         </tr>
       `
     })
 
-    score = Math.max(40,Math.round(score))
+    score = Math.max(42,Math.round(score))
 
-    const peerDelta = Math.max(0,100 - score)
+    const peerDelta = 100 - score
 
-    insights.sort((a,b)=>b.impact-a.impact)
-
-    state = {
+    APP.state = {
+      business,
+      trade,
+      revenue,
+      payroll,
+      autos,
       score,
       peerDelta,
-      totalVariance,
-      insights,
-      html,
-      names
+      varianceTotal,
+      tableHTML
     }
 
     drawGauge(score)
 
     document.getElementById('riskScore').innerText = `Contractor Insurance Positioning Score: ${score}/100`
 
-    document.getElementById('jobImpact').innerText = `Your insurance program appears to be priced above approximately ${peerDelta}% of similar California contractors based on current market benchmark modeling and underwriting trend analysis.`
+    document.getElementById('jobImpact').innerText = `Your insurance program appears to benchmark above approximately ${peerDelta}% of similar California contractors based on underwriting trend analysis.`
 
-    document.getElementById('summary').innerText =
-`Estimated Annual Premium Variance: ${money(totalVariance)}
+    document.getElementById('summary').innerHTML = `
+      <strong>Executive Summary</strong><br><br>
+      Estimated Annual Premium Variance: <strong>${formatMoney(varianceTotal)}</strong><br><br>
 
-California Market Summary:
+      California contractor insurance markets continue tightening across Workers Compensation, Commercial Auto, and Umbrella lines due to increased claims severity and underwriting scrutiny.<br><br>
 
-California contractor insurance markets continue to tighten across Workers Compensation, Commercial Auto, and Umbrella lines as carriers respond to increased loss severity, litigation trends, and construction underwriting volatility.
+      <strong>Recommended Next Steps</strong><br>
+      • Review carrier competitiveness<br>
+      • Review endorsements and exclusions<br>
+      • Validate Workers Compensation classifications<br>
+      • Review commercial auto fleet pricing<br><br>
 
-Primary Benchmark Findings:
+      <strong>Contact Chris Gibson</strong><br>
+      916-864-4983<br>
+      cgibson@addlins.com
+    `
 
-${insights.slice(0,3).map(i => `• ${names[i.key]}: ${money(i.impact)}`).join('\n')}
+    document.getElementById('table').innerHTML = tableHTML
 
-Recommended Next Steps:
+    document.getElementById('heatMarker').style.left = `${Math.max(5,Math.min(95,peerDelta))}%`
 
-• Review carrier competitiveness and market positioning
-• Review policy endorsements, exclusions, and sublimits
-• Evaluate carrier appetite and underwriting fit
-• Validate Workers Compensation classifications and payroll allocation
-
-Contact Chris Gibson for a complimentary contractor insurance benchmarking review:
-916-864-4983
-cgibson@addlins.com`
-
-    document.getElementById('table').innerHTML = html
-
-    const marker = document.getElementById('heatMarker')
-    marker.style.left = `${Math.min(95,Math.max(5,peerDelta))}%`
-
-    const reportEl = document.getElementById('report')
-
-    if(reportEl){
-      reportEl.style.display = 'block'
-    }
+    document.getElementById('report').style.display = 'block'
 
     await pushLead({
       business,
@@ -369,189 +316,99 @@ cgibson@addlins.com`
       payroll,
       autos,
       riskScore:score,
-      premiumVariance:totalVariance,
       benchmarkDelta:peerDelta,
+      premiumVariance:varianceTotal,
       generatedAt:new Date().toISOString()
     })
 
-  } catch(err){
-    console.error(err)
-    alert('Unable to generate report. Please review your inputs.')
+  }catch(error){
+
+    console.error(error)
+    alert('Unable to generate report.')
   }
 }
 
 async function downloadPDF(){
 
-  if(!state){
+  if(!APP.state){
     alert('Please generate the report first.')
     return
   }
 
-  const { jsPDF } = window.jspdf
-  const doc = new jsPDF('landscape','mm','a4')
+  const report = document.getElementById('report')
 
-  const business = document.getElementById('business').value || 'Client'
-  const trade = document.getElementById('trade').value
-
-  doc.setFillColor(11,42,69)
-  doc.rect(0,0,297,18,'F')
-
-  doc.setFillColor(255,255,255)
-  doc.rect(0,18,297,12,'F')
-
-  doc.setTextColor(255)
-  doc.setFontSize(20)
-  doc.setFont('helvetica','bold')
-  doc.text('California Contractor Insurance Benchmark Analysis',14,12)
-
-  doc.setTextColor(11,42,69)
-  doc.setFontSize(11)
-  doc.setFont('helvetica','normal')
-  doc.text('Albano Insurance Solutions | CA License #0442296',14,25)
-
-  doc.setDrawColor(220)
-  doc.line(10,32,287,32)
-
-  doc.setFillColor(243,247,252)
-  doc.roundedRect(10,38,90,138,4,4,'F')
-
-  doc.setTextColor(11,42,69)
-  doc.setFontSize(14)
-  doc.setFont('helvetica','bold')
-  doc.text('Client Summary',14,48)
-
-  doc.setFont('helvetica','normal')
-  doc.setFontSize(10)
-  doc.setTextColor(40)
-
-  const leftSummary = [
-    `Business: ${business}`,
-    `Trade: ${trade}`,
-    `Risk Score: ${state.score}/100`,
-    `Estimated Annual Premium Variance: ${money(state.totalVariance)}`,
-    `Benchmark Delta: ${state.peerDelta}%`,
-    '',
-    'California insurance markets continue',
-    'to tighten for contractors, especially',
-    'for Workers Compensation and Auto.',
-    '',
-    'This benchmark compares current',
-    'insurance structure versus California',
-    'peer averages and underwriting trends.'
-  ]
-
-  let y = 58
-  leftSummary.forEach(line=>{
-    doc.text(line,14,y)
-    y += 6
-  })
-
-  doc.setFillColor(11,42,69)
-  doc.roundedRect(14,132,80,26,3,3,'F')
-
-  doc.setFont('helvetica','bold')
-  doc.setFontSize(10)
-  doc.setTextColor(255)
-  doc.text('Contact Chris Gibson',18,142)
-  doc.text('916-864-4983',18,149)
-  doc.text('cgibson@addlins.com',18,156)
-
-  const reportNode = document.getElementById('report')
-
-  const canvas = await html2canvas(reportNode,{
-    scale:1.5,
-    backgroundColor:'#ffffff'
-  })
+  const canvas = await html2canvas(report,{scale:1.3,backgroundColor:'#ffffff'})
 
   const img = canvas.toDataURL('image/png')
 
-  doc.setFillColor(248,250,252)
-  doc.roundedRect(102,36,180,124,3,3,'F')
+  const { jsPDF } = window.jspdf
+  const pdf = new jsPDF('landscape','mm','a4')
 
-  doc.setDrawColor(220)
-  doc.roundedRect(102,36,180,124,3,3)
+  pdf.setFillColor(11,42,69)
+  pdf.rect(0,0,297,18,'F')
 
-  doc.setFont('helvetica','bold')
-  doc.setFontSize(12)
-  doc.setTextColor(11,42,69)
-  doc.text('Benchmark Visualization & Market Positioning',108,44)
+  pdf.setTextColor(255)
+  pdf.setFont('helvetica','bold')
+  pdf.setFontSize(18)
+  pdf.text('California Contractor Insurance Benchmark Analysis',14,12)
 
-  doc.addImage(img,'PNG',108,48,168,108)
+  pdf.setTextColor(60)
+  pdf.setFontSize(9)
+  pdf.text('Albano Insurance Solutions | CA License #0442296',14,25)
 
-  doc.setDrawColor(210)
-  doc.line(10,198,287,198)
+  pdf.setFillColor(243,247,252)
+  pdf.roundedRect(10,34,82,42,3,3,'F')
 
-  doc.setFontSize(8)
-  doc.setTextColor(120)
-  doc.text('Prepared by Albano Insurance Solutions | California Contractor Insurance Benchmark Analysis',12,204)
-  doc.text('Chris Gibson | 916-864-4983 | cgibson@addlins.com',190,204)
+  pdf.setTextColor(11,42,69)
+  pdf.setFont('helvetica','bold')
+  pdf.setFontSize(12)
+  pdf.text('Client Summary',14,44)
 
-  doc.save('Insurance-Risk-Analysis-Executive-Summary.pdf')
+  pdf.setFont('helvetica','normal')
+  pdf.setFontSize(9)
+
+  pdf.text(`Business: ${APP.state.business || 'Client'}`,14,54)
+  pdf.text(`Trade: ${APP.state.trade}`,14,61)
+  pdf.text(`Risk Score: ${APP.state.score}/100`,14,68)
+
+  pdf.setFillColor(11,42,69)
+  pdf.roundedRect(10,84,82,28,3,3,'F')
+
+  pdf.setTextColor(255)
+  pdf.setFont('helvetica','bold')
+  pdf.text('Contact Chris Gibson',14,95)
+  pdf.text('916-864-4983',14,102)
+  pdf.text('cgibson@addlins.com',14,109)
+
+  pdf.setFillColor(248,250,252)
+  pdf.roundedRect(100,34,184,140,3,3,'F')
+
+  pdf.setTextColor(11,42,69)
+  pdf.setFontSize(12)
+  pdf.text('Benchmark Visualization & Market Positioning',106,44)
+
+  pdf.addImage(img,'PNG',106,50,170,110)
+
+  pdf.setFontSize(8)
+  pdf.setTextColor(120)
+  pdf.text('Prepared by Albano Insurance Solutions',12,202)
+  pdf.text('Chris Gibson | cgibson@addlins.com',220,202)
+
+  pdf.save('Insurance-Risk-Analysis-Executive-Summary.pdf')
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
 
-  console.clear()
+  document.querySelectorAll('input').forEach(input=>{
 
-  const generateBtn = document.getElementById('generateBtn')
-  const pdfBtn = document.getElementById('pdfBtn')
-
-  if(generateBtn){
-
-    generateBtn.replaceWith(generateBtn.cloneNode(true))
-
-    document.getElementById('generateBtn').addEventListener('click', async (e)=>{
-
-      e.preventDefault()
-
-      try {
-
-        await runAnalysis()
-
-      } catch(err){
-
-        console.error('Generate Report Error:', err)
-        alert('Unable to generate report. Please review inputs and try again.')
-      }
-    })
-  }
-
-  if(pdfBtn){
-
-    pdfBtn.replaceWith(pdfBtn.cloneNode(true))
-
-    document.getElementById('pdfBtn').addEventListener('click', async (e)=>{
-
-      e.preventDefault()
-
-      try {
-
-        await downloadPDF()
-
-      } catch(err){
-
-        console.error('PDF Generation Error:', err)
-        alert('Unable to generate PDF report.')
-      }
-    })
-  }
-
-  document.querySelectorAll('.money-input').forEach(input=>{
-
-    input.addEventListener('input',()=>{
-      fmtInput(input)
-    })
+    if(input.id !== 'autos' && input.type !== 'email'){
+      input.addEventListener('input',()=>formatInput(input))
+    }
   })
-})
-  }
 
-  const pdfBtn = document.getElementById('pdfBtn')
-  if(pdfBtn){
-    pdfBtn.addEventListener('click', async (e)=>{
-      e.preventDefault()
-      await downloadPDF()
-    })
-  }
+  document.getElementById('generateBtn').addEventListener('click',runAnalysis)
+
+  document.getElementById('pdfBtn').addEventListener('click',downloadPDF)
 })
 </script>
 </body>
